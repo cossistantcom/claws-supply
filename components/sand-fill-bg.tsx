@@ -124,12 +124,13 @@ export function SandFillBg({
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
     const profile = PROFILE_BY_VARIANT[variant];
-    const canvas = canvasRef.current;
-    const wrap = wrapRef.current;
-    if (!canvas || !wrap) return;
+    if (!canvasRef.current || !wrapRef.current) return;
+    const canvas: HTMLCanvasElement = canvasRef.current;
+    const wrap: HTMLElement = wrapRef.current;
 
-    const ctx = canvas.getContext("2d", { alpha: true });
-    if (!ctx) return;
+    const maybeCtx = canvas.getContext("2d", { alpha: true });
+    if (!maybeCtx) return;
+    const ctx: CanvasRenderingContext2D = maybeCtx;
 
     const fgColor = getComputedStyle(wrap).color;
 

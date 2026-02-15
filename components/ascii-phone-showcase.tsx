@@ -500,18 +500,20 @@ function buildKeyedHandTexture(texture: Texture, isDarkMode: boolean) {
     return texture;
   }
 
-  const width =
+  const width = (
     "naturalWidth" in image
       ? image.naturalWidth
       : "videoWidth" in image
         ? image.videoWidth
-        : image.width;
-  const height =
+        : image.width
+  ) as number;
+  const height = (
     "naturalHeight" in image
       ? image.naturalHeight
       : "videoHeight" in image
         ? image.videoHeight
-        : image.height;
+        : image.height
+  ) as number;
 
   if (!width || !height) {
     return texture;
