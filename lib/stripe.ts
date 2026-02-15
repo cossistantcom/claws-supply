@@ -1,10 +1,19 @@
 import Stripe from "stripe";
 
 // ─── Stripe Client ──────────────────────────────────────
+// Lazily initialised so the module can be imported during Next.js static
+// page-data collection when env vars are not yet available.
 
-export const stripeClient = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2026-01-28.clover",
-});
+let _stripeClient: Stripe | null = null;
+
+export function getStripeClient(): Stripe {
+  if (!_stripeClient) {
+    _stripeClient = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+      apiVersion: "2026-01-28.clover",
+    });
+  }
+  return _stripeClient;
+}
 
 // ─── Pricing ────────────────────────────────────────────
 // One base price ($799/mo). Two coupons discount earlier tiers.
