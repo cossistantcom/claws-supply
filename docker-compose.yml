@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: hourglass_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: hourglass_db
+      POSTGRES_USER: hourglass
+      POSTGRES_PASSWORD: hourglass_dev
+    ports:
+      - "5499:5432"
+    volumes:
+      - hourglass_pg_data:/var/lib/postgresql/data
+
+volumes:
+  hourglass_pg_data:
