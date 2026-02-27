@@ -1,5 +1,5 @@
 import { getCategoryBySlug } from "@/lib/categories";
-import type { MockTemplate } from "@/lib/mock/templates";
+import type { PublicTemplateCard } from "@/lib/templates/public-types";
 import { categoryPath, templatePath } from "@/lib/routes";
 import Link from "next/link";
 
@@ -16,7 +16,7 @@ function formatPrice(priceCents: number, currency: string) {
 }
 
 type TemplateCardProps = {
-  template: MockTemplate;
+  template: PublicTemplateCard;
   showCategory?: boolean;
 };
 

@@ -33,6 +33,11 @@
   - `GET /api/templates/[slug]/download` streams private blob server-side (no public/private signed URL exposed to client).
 - [x] DONE — Reusable frontend upload primitives shipped:
   - `useBlobUpload` hook + modular `FileUploadField`, `ZipUploadField`, and `CoverUploadField`.
+- [x] DONE — Template read/list pipeline shipped end-to-end (DB-backed, mock-free):
+  - `GET /api/templates` with query support for `category`, `sort`, `page`, `limit`, `freeOnly`, and backend-ready `search`
+  - `GET /api/templates/[slug]` returns public template detail (seller + aggregate stats + related templates)
+  - Public discovery/category/detail pages now SSR-prefetch from shared read service (no `lib/mock/templates.ts` dependency)
+  - `sitemap.xml` template URLs now source from published DB records
 
 ### Short Tech Notes (Implemented)
 
@@ -48,9 +53,15 @@
 - Upload security decision: Vercel client upload callbacks use raw request body (for signature verification), while still validating shape with Zod.
 - Pricing guardrail: paid pricing (`priceCents > 0`) requires seller Stripe verification, including when action is triggered by admin.
 - Description guardrail: markdown is normalized on write; `#` and `##` headings are auto-demoted to `###`.
+- Read architecture decision: one shared template read service powers both SSR pages and API handlers; no server-side internal HTTP fetch layer.
+- Runtime DB decision: query/mutation paths use Drizzle query builder only (no raw `sql` fragments in runtime services/routes). Raw SQL remains limited to Drizzle schema constraints and migration files.
+- Download counter decision: increments use a Drizzle transaction with row lock (`FOR UPDATE`) and deterministic writeback.
+- Migration prerequisite: local/dev must run latest Drizzle migrations before app runtime (`bun run migrate`) so lifecycle columns like `template.status` exist.
 - Current gap snapshot:
-  - Read/list template APIs (`GET /api/templates`, `GET /api/templates/[slug]`) are still pending.
-  - Automated tests for lifecycle/blob flows are still pending.
+  - Checkout/purchase routes + Stripe webhook purchase creation are still pending.
+  - Review routes are still pending.
+  - Member directory/profile public APIs are still pending.
+  - Automated tests for lifecycle/read/blob/payment flows are still pending.
 
 ---
 
@@ -414,8 +425,8 @@ Template API conventions (implemented):
 
 | Method   | Route                                         | Auth                | Status      | Description                                                                                                                                                                  |
 | -------- | --------------------------------------------- | ------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET`    | `/api/templates`                              | ❌                  | ⏳ Planned  | List templates. Query params: `category`, `sort` (newest, popular, price_asc, price_desc), `page`, `limit`, `search`.                                                     |
-| `GET`    | `/api/templates/[slug]`                       | ❌                  | ⏳ Planned  | Get single template by slug. Includes seller info, avg rating, review count.                                                                                                |
+| `GET`    | `/api/templates`                              | ❌                  | ✅ Shipped  | List published templates. Query params: `category`, `sort` (newest, popular, price_asc, price_desc), `page`, `limit`, `freeOnly`, `search` (backend-ready for phase 2 UI). |
+| `GET`    | `/api/templates/[slug]`                       | ❌                  | ✅ Shipped  | Get single public template by slug. Includes seller info, aggregate stats, and related templates.                                                                            |
 | `POST`   | `/api/templates`                              | ✅ User             | ✅ Shipped  | Create draft template. Body: `{ title, slug, shortDescription, description, category, priceCents }`.                                                                       |
 | `PATCH`  | `/api/templates/[slug]`                       | ✅ Owner/Admin      | ✅ Shipped  | Edit mutable metadata only (slug immutable). Supports optional `coverUpload` blob reference.                                                                                |
 | `POST`   | `/api/templates/[slug]/publish`               | ✅ Owner/Admin      | ✅ Shipped  | Publish initial version. Body includes `{ version, zipUpload, coverUpload? }`.                                                                                              |

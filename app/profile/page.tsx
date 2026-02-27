@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { ProfileSettingsPage } from "@/components/profile/profile-settings-page";
+import { SignOutButton } from "@/components/profile/sign-out-button";
 import { getSessionFromNextHeaders } from "@/lib/auth/session";
 
 export default async function ProfilePage() {
@@ -10,9 +11,11 @@ export default async function ProfilePage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-3xl items-center justify-center px-6 py-24">
+    <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col gap-6 px-6 pb-24 pt-24">
+      <div className="flex justify-end">
+        <SignOutButton />
+      </div>
       <ProfileSettingsPage />
     </main>
   );
 }
-

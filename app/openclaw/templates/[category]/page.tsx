@@ -1,17 +1,19 @@
 import { OpenClawPageShell } from "@/components/openclaw-page-shell";
 import { TemplateCard } from "@/components/template-card";
 import {
-  CATEGORIES,
-  type CategorySort,
   getCategoryBySlug,
   isCategorySlug,
 } from "@/lib/categories";
-import { getTemplatesByCategory } from "@/lib/mock/templates";
 import { categoryPath, categoryPathWithSort, discoveryPath } from "@/lib/routes";
 import { buildSeoMetadata } from "@/lib/seo";
+import { parseTemplateListQueryFromSearchParams } from "@/lib/templates/read-schemas";
+import { listPublishedTemplatesCached } from "@/lib/templates/read-service";
+import type { TemplateListQueryInput } from "@/lib/templates/public-types";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+
+export const dynamic = "force-dynamic";
 
 type CategoryRouteParams = {
   category: string;
@@ -19,6 +21,10 @@ type CategoryRouteParams = {
 
 type CategoryRouteSearchParams = {
   sort?: string | string[];
+  page?: string | string[];
+  limit?: string | string[];
+  freeOnly?: string | string[];
+  search?: string | string[];
 };
 
 type CategoryPageProps = {
@@ -26,24 +32,52 @@ type CategoryPageProps = {
   searchParams: Promise<CategoryRouteSearchParams>;
 };
 
-function getSortValue(sort: string | string[] | undefined): CategorySort {
-  const first = Array.isArray(sort) ? sort[0] : sort;
-  return first === "latest" ? "latest" : "popular";
+function getFirstValue(value: string | string[] | undefined) {
+  if (Array.isArray(value)) {
+    return value[0];
+  }
+
+  return value;
 }
 
-function hasSortQuery(sort: string | string[] | undefined) {
-  return typeof sort !== "undefined";
+function parseCategoryListQuery(
+  searchParams: CategoryRouteSearchParams,
+): TemplateListQueryInput {
+  const rawSort = getFirstValue(searchParams.sort);
+
+  try {
+    const parsed = parseTemplateListQueryFromSearchParams(searchParams);
+
+    return {
+      ...parsed,
+      sort: rawSort ? parsed.sort : "popular",
+    };
+  } catch {
+    return {
+      sort: "popular",
+      page: 1,
+      limit: 20,
+      freeOnly: false,
+    };
+  }
 }
 
-export function generateStaticParams() {
-  return CATEGORIES.map((category) => ({ category: category.slug }));
+function isParamHeavyVariant(
+  searchParams: CategoryRouteSearchParams,
+  query: TemplateListQueryInput,
+) {
+  const hasSearch = Boolean(query.search);
+  const hasNonDefaultSort = getFirstValue(searchParams.sort) !== undefined && query.sort !== "popular";
+  const hasPageBeyondFirst = query.page > 1;
+
+  return hasSearch || hasNonDefaultSort || hasPageBeyondFirst;
 }
 
 export async function generateMetadata({
   params,
   searchParams,
 }: CategoryPageProps): Promise<Metadata> {
-  const [{ category }, { sort }] = await Promise.all([params, searchParams]);
+  const [{ category }, rawSearchParams] = await Promise.all([params, searchParams]);
 
   if (!isCategorySlug(category)) {
     return buildSeoMetadata({
@@ -64,11 +98,13 @@ export async function generateMetadata({
     });
   }
 
+  const query = parseCategoryListQuery(rawSearchParams);
+
   return buildSeoMetadata({
     title: categoryDefinition.seoTitle,
     description: categoryDefinition.seoDescription,
     path: categoryPath(categoryDefinition.slug),
-    noindex: hasSortQuery(sort),
+    noindex: isParamHeavyVariant(rawSearchParams, query),
   });
 }
 
@@ -76,7 +112,7 @@ export default async function CategoryTemplatesPage({
   params,
   searchParams,
 }: CategoryPageProps) {
-  const [{ category }, { sort }] = await Promise.all([params, searchParams]);
+  const [{ category }, rawSearchParams] = await Promise.all([params, searchParams]);
 
   if (!isCategorySlug(category)) {
     notFound();
@@ -87,8 +123,13 @@ export default async function CategoryTemplatesPage({
     notFound();
   }
 
-  const selectedSort = getSortValue(sort);
-  const templates = getTemplatesByCategory(categoryDefinition.slug, selectedSort);
+  const query = parseCategoryListQuery(rawSearchParams);
+  const selectedSort = query.sort;
+  const result = await listPublishedTemplatesCached({
+    ...query,
+    category: categoryDefinition.slug,
+  });
+  const templates = result.items;
 
   return (
     <OpenClawPageShell>
@@ -117,7 +158,7 @@ export default async function CategoryTemplatesPage({
             href={categoryPathWithSort(categoryDefinition.slug, "latest")}
             className={[
               "border border-border px-3 py-1 text-[11px] font-pixel uppercase tracking-wide",
-              selectedSort === "latest"
+              selectedSort === "newest"
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:text-foreground",
             ].join(" ")}
@@ -139,11 +180,17 @@ export default async function CategoryTemplatesPage({
         </div>
       </header>
 
-      <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {templates.map((template) => (
-          <TemplateCard key={template.slug} template={template} />
-        ))}
-      </section>
+      {templates.length > 0 ? (
+        <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          {templates.map((template) => (
+            <TemplateCard key={template.slug} template={template} />
+          ))}
+        </section>
+      ) : (
+        <section className="border border-border p-4 text-xs text-muted-foreground">
+          No published templates found for this category.
+        </section>
+      )}
     </OpenClawPageShell>
   );
 }

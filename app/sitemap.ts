@@ -1,11 +1,14 @@
 import { CATEGORIES, DISCOVERY_PAGES } from "@/lib/categories";
-import { getAllMockTemplates } from "@/lib/mock/templates";
 import { categoryPath, discoveryPath, templatePath } from "@/lib/routes";
 import { absoluteUrl } from "@/lib/seo";
+import { listPublishedTemplateSlugsForSitemapCached } from "@/lib/templates/read-service";
 import type { MetadataRoute } from "next";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export const dynamic = "force-dynamic";
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
+  const templates = await listPublishedTemplateSlugsForSitemapCached();
 
   return [
     {
@@ -26,9 +29,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "weekly" as const,
       priority: 0.8,
     })),
-    ...getAllMockTemplates().map((template) => ({
+    ...templates.map((template) => ({
       url: absoluteUrl(templatePath(template.slug)),
-      lastModified: new Date(template.updatedAt),
+      lastModified: template.updatedAt,
       changeFrequency: "weekly" as const,
       priority: 0.7,
     })),

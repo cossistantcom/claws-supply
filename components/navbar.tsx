@@ -1,14 +1,21 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { authClient } from "@/lib/auth-client";
 import { ProgressiveBlur } from "./progresive-blur";
 import { cn } from "@/lib/utils";
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const router = useRouter();
+  const session = authClient.useSession();
+  const isLoggedIn = Boolean(session.data);
+  const accountHref = isLoggedIn ? "/profile" : "/auth/sign-in";
+  const accountLabel = isLoggedIn ? "PROFILE" : "LOGIN";
+  const uploadHref = isLoggedIn ? "/profile" : "/auth/sign-up?next=/profile";
 
   useEffect(() => {
     function onScroll() {
@@ -45,20 +52,26 @@ export function Navbar() {
       <nav className="fixed top-0 left-0 right-0 z-[9998] transition-[border-color] duration-300">
         <div className="mx-auto px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className="font-pixel text-sm tracking-wider uppercase">
+            <Link
+              className="font-pixel text-sm tracking-wider uppercase hover:opacity-80 transition-opacity"
+              href="/"
+            >
               claws.supply
-            </span>
+            </Link>
           </div>
           <div className="flex items-center gap-4">
             <Button
               variant="ghost"
               className="font-pixel text-xs tracking-wider"
-              onClick={() => router.push("/auth/sign-in")}
+              onClick={() => router.push(accountHref)}
             >
-              LOGIN
+              {accountLabel}
             </Button>
             <div className="pixel-ui">
-              <Button className="font-pixel text-xs tracking-wider">
+              <Button
+                className="font-pixel text-xs tracking-wider"
+                onClick={() => router.push(uploadHref)}
+              >
                 UPLOAD YOUR TEMPLATE
               </Button>
             </div>

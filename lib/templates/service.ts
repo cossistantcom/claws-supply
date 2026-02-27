@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { isAdmin } from "@/lib/auth/permissions";
 import { db } from "@/lib/db";
 import { purchase, template, templateVersion, user } from "@/lib/db/schema";
@@ -602,13 +602,32 @@ export async function getTemplateDownloadForActor(
 
   const blobResult = await getPrivateTemplateStream(templateRow.zipObjectKey);
 
-  await db
-    .update(template)
-    .set({
-      downloadCount: sql`${template.downloadCount} + 1`,
-      updatedAt: new Date(),
-    })
-    .where(eq(template.id, templateRow.id));
+  await db.transaction(async (tx) => {
+    const [lockedTemplate] = await tx
+      .select({
+        id: template.id,
+        downloadCount: template.downloadCount,
+      })
+      .from(template)
+      .where(eq(template.id, templateRow.id))
+      .limit(1)
+      .for("update");
+
+    if (!lockedTemplate) {
+      throw new TemplateServiceError("Template not found.", {
+        code: "TEMPLATE_NOT_FOUND",
+        status: 404,
+      });
+    }
+
+    await tx
+      .update(template)
+      .set({
+        downloadCount: lockedTemplate.downloadCount + 1,
+        updatedAt: new Date(),
+      })
+      .where(eq(template.id, templateRow.id));
+  });
 
   return {
     stream: blobResult.stream,

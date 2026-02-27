@@ -1,14 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { getSectionMenuItems } from "@/lib/categories";
-import {
-  getDiscoveryTemplateCount,
-  getTemplateCountByCategory,
-} from "@/lib/mock/templates";
 import { categoryPath, discoveryPath } from "@/lib/routes";
+import { getTemplateCountsForMenuCached } from "@/lib/templates/read-service";
 import Link from "next/link";
 
-export function Menu() {
-  const categoryCounts = getTemplateCountByCategory();
+export async function Menu() {
+  const counts = await getTemplateCountsForMenuCached();
 
   const sectionItems = getSectionMenuItems().map((item) =>
     item.type === "discovery"
@@ -16,13 +13,13 @@ export function Menu() {
           key: item.slug,
           label: item.label.toLowerCase(),
           href: discoveryPath(item.slug),
-          count: getDiscoveryTemplateCount(item.slug),
+          count: counts.discovery[item.slug],
         }
       : {
           key: item.slug,
           label: item.label.toLowerCase(),
           href: categoryPath(item.slug),
-          count: categoryCounts[item.slug] ?? 0,
+          count: counts.categories[item.slug] ?? 0,
         },
   );
 

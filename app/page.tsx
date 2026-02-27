@@ -1,31 +1,62 @@
 import { Metadata } from "next";
-import { Navbar } from "@/components/navbar";
 import { AsciiPhoneShowcase } from "@/components/ascii-phone-showcase";
 import { AsciiClawsShowcase } from "@/components/claws-showcase";
 import { Menu } from "@/components/section-menu";
 import { TemplateCard } from "@/components/template-card";
 import { CATEGORIES, DISCOVERY_PAGES } from "@/lib/categories";
-import { getTemplatesByCategory, getTemplatesByDiscovery } from "@/lib/mock/templates";
 import { categoryPath, discoveryPath } from "@/lib/routes";
+import {
+  getTemplateCountsForMenuCached,
+  listPublishedTemplatesCached,
+} from "@/lib/templates/read-service";
 import Link from "next/link";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
-  title: "Claws.supply — OpenClaw Agent Templates Marketplace",
+  title: "Claws.supply — OpenClaw AI Agent Templates Marketplace",
   description:
     "Explore category-based OpenClaw agent templates, discover popular and latest releases, and launch faster with production-ready setups.",
 };
 
 export default async function Page() {
-  const discoverySections = DISCOVERY_PAGES.map((discovery) => ({
+  const [counts, discoveryResults, categoryResults] = await Promise.all([
+    getTemplateCountsForMenuCached(),
+    Promise.all(
+      DISCOVERY_PAGES.map((discovery) =>
+        listPublishedTemplatesCached({
+          sort: discovery.slug === "latest" ? "newest" : "popular",
+          page: 1,
+          limit: 4,
+          freeOnly: false,
+        }),
+      ),
+    ),
+    Promise.all(
+      CATEGORIES.map((category) =>
+        listPublishedTemplatesCached({
+          category: category.slug,
+          sort: "popular",
+          page: 1,
+          limit: 4,
+          freeOnly: false,
+        }),
+      ),
+    ),
+  ]);
+
+  const discoverySections = DISCOVERY_PAGES.map((discovery, index) => ({
     ...discovery,
     href: discoveryPath(discovery.slug),
-    templates: getTemplatesByDiscovery(discovery.slug, 4),
+    templates: discoveryResults[index]?.items ?? [],
+    count: counts.discovery[discovery.slug],
   }));
 
-  const categorySections = CATEGORIES.map((category) => ({
+  const categorySections = CATEGORIES.map((category, index) => ({
     ...category,
     href: categoryPath(category.slug),
-    templates: getTemplatesByCategory(category.slug, "popular", 4),
+    templates: categoryResults[index]?.items ?? [],
+    count: counts.categories[category.slug] ?? 0,
   }));
 
   return (
@@ -41,12 +72,12 @@ export default async function Page() {
             </div>
             <div className="flex-1 flex flex-col gap-4">
               <h1 className="font-pixel text-3xl sm:text-3xl md:text-4xl xl:text-5xl leading-[1.3] tracking-tight text-balance">
-                OpenClaw template marketplace for every workflow.
+                Explore and sell vetted OpenClaw templates.
               </h1>
 
               <p className="text-sm sm:text-base text-muted-foreground max-w-xl leading-relaxed">
-                Navigate by category, discover what is trending, and deploy pre-configured
-                OpenClaw agents faster.
+                Discover trending Openclaw templates and deploy pre-configured,
+                production-ready OpenClaw AI agents faster.
               </p>
 
               <div className="flex flex-wrap items-center gap-3 pt-2">
@@ -65,7 +96,7 @@ export default async function Page() {
               </div>
             </div>
           </div>
-
+          {/*
           <section className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {discoverySections.map((section) => (
               <Link
@@ -77,34 +108,47 @@ export default async function Page() {
                   Discovery
                 </p>
                 <h2 className="font-pixel text-xl">{section.label}</h2>
-                <p className="text-xs text-muted-foreground">{section.description}</p>
+                <p className="text-xs text-muted-foreground">
+                  {section.description}
+                </p>
                 <p className="text-[11px] text-muted-foreground">
-                  {section.templates.length} templates indexed
+                  {section.count} templates indexed
                 </p>
               </Link>
             ))}
-          </section>
+          </section> */}
 
           <section className="space-y-12">
             {categorySections.map((section) => (
               <article key={section.slug} className="space-y-4">
                 <header className="space-y-2">
-                  <Link href={section.href} className="inline-flex items-center gap-2">
+                  <Link
+                    href={section.href}
+                    className="inline-flex items-center gap-2"
+                  >
                     <h2 className="font-pixel text-2xl hover:underline">
                       {section.label}
                     </h2>
                     <span className="text-xs text-muted-foreground">
-                      ({section.templates.length})
+                      ({section.count})
                     </span>
                   </Link>
-                  <p className="text-sm text-muted-foreground">{section.description}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {section.description}
+                  </p>
                 </header>
 
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                  {section.templates.map((template) => (
-                    <TemplateCard key={template.slug} template={template} />
-                  ))}
-                </div>
+                {section.templates.length > 0 ? (
+                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                    {section.templates.map((template) => (
+                      <TemplateCard key={template.slug} template={template} />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground border border-border p-4">
+                    No published templates in this category yet.
+                  </p>
+                )}
               </article>
             ))}
           </section>
@@ -154,7 +198,6 @@ export default async function Page() {
           </div>
         </div>
       </footer>
-      <Navbar />
     </>
   );
 }

@@ -1,16 +1,14 @@
 import { OpenClawPageShell } from "@/components/openclaw-page-shell";
 import { TemplateCard } from "@/components/template-card";
 import { getCategoryBySlug } from "@/lib/categories";
-import {
-  getAllMockTemplates,
-  getRelatedTemplates,
-  getTemplateBySlug,
-} from "@/lib/mock/templates";
 import { categoryPath, discoveryPath, templatePath } from "@/lib/routes";
 import { buildSeoMetadata } from "@/lib/seo";
+import { getPublishedTemplateBySlugCached } from "@/lib/templates/read-service";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+
+export const dynamic = "force-dynamic";
 
 type TemplatePageParams = {
   templateSlug: string;
@@ -32,19 +30,13 @@ function formatPrice(priceCents: number, currency: string) {
   }).format(priceCents / 100);
 }
 
-export function generateStaticParams() {
-  return getAllMockTemplates().map((template) => ({
-    templateSlug: template.slug,
-  }));
-}
-
 export async function generateMetadata({
   params,
 }: TemplatePageProps): Promise<Metadata> {
   const { templateSlug } = await params;
-  const template = getTemplateBySlug(templateSlug);
+  const detail = await getPublishedTemplateBySlugCached(templateSlug);
 
-  if (!template) {
+  if (!detail) {
     return buildSeoMetadata({
       title: "Template Not Found — Claws.supply",
       description: "This OpenClaw template page does not exist.",
@@ -54,22 +46,22 @@ export async function generateMetadata({
   }
 
   return buildSeoMetadata({
-    title: `${template.title} — OpenClaw Template on Claws.supply`,
-    description: template.shortDescription,
-    path: templatePath(template.slug),
+    title: `${detail.template.title} — OpenClaw Template on Claws.supply`,
+    description: detail.template.shortDescription,
+    path: templatePath(detail.template.slug),
   });
 }
 
 export default async function TemplateDetailPage({ params }: TemplatePageProps) {
   const { templateSlug } = await params;
-  const template = getTemplateBySlug(templateSlug);
+  const detail = await getPublishedTemplateBySlugCached(templateSlug);
 
-  if (!template) {
+  if (!detail) {
     notFound();
   }
 
-  const category = getCategoryBySlug(template.category);
-  const relatedTemplates = getRelatedTemplates(template.slug, 6);
+  const category = getCategoryBySlug(detail.template.category);
+  const relatedTemplates = detail.relatedTemplates;
 
   return (
     <OpenClawPageShell>
@@ -87,32 +79,34 @@ export default async function TemplateDetailPage({ params }: TemplatePageProps) 
               <span>/</span>
             </>
           ) : null}
-          <span className="text-foreground">{template.title}</span>
+          <span className="text-foreground">{detail.template.title}</span>
         </div>
 
-        <h1 className="font-pixel text-3xl sm:text-4xl">{template.title}</h1>
-        <p className="text-sm text-muted-foreground max-w-2xl">{template.description}</p>
+        <h1 className="font-pixel text-3xl sm:text-4xl">{detail.template.title}</h1>
+        <p className="text-sm text-muted-foreground max-w-2xl">
+          {detail.template.description}
+        </p>
 
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4 text-xs">
           <div className="border border-border p-3">
             <p className="text-muted-foreground">Price</p>
             <p className="font-pixel text-sm">
-              {formatPrice(template.priceCents, template.currency)}
+              {formatPrice(detail.template.priceCents, detail.template.currency)}
             </p>
           </div>
           <div className="border border-border p-3">
             <p className="text-muted-foreground">Downloads</p>
             <p className="font-pixel text-sm">
-              {template.downloadCount.toLocaleString()}
+              {detail.stats.downloadCount.toLocaleString()}
             </p>
           </div>
           <div className="border border-border p-3">
             <p className="text-muted-foreground">Rating</p>
-            <p className="font-pixel text-sm">{template.rating.toFixed(1)}</p>
+            <p className="font-pixel text-sm">{detail.stats.rating.toFixed(1)}</p>
           </div>
           <div className="border border-border p-3">
             <p className="text-muted-foreground">Reviews</p>
-            <p className="font-pixel text-sm">{template.reviewCount}</p>
+            <p className="font-pixel text-sm">{detail.stats.reviewCount}</p>
           </div>
         </div>
 
@@ -134,10 +128,12 @@ export default async function TemplateDetailPage({ params }: TemplatePageProps) 
       <section className="space-y-3">
         <h2 className="font-pixel text-lg">Seller</h2>
         <div className="border border-border p-4 text-sm">
-          <p className="font-pixel text-base">{template.seller.displayName}</p>
-          <p className="text-muted-foreground">@{template.seller.username}</p>
+          <p className="font-pixel text-base">{detail.seller.displayName}</p>
+          <p className="text-muted-foreground">@{detail.seller.username}</p>
           <p className="text-muted-foreground mt-2">
-            {template.seller.isVerified ? "Verified seller" : "Seller profile pending verification"}
+            {detail.seller.isVerified
+              ? "Verified seller"
+              : "Seller profile pending verification"}
           </p>
         </div>
       </section>

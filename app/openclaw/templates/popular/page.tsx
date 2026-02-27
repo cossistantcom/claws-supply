@@ -1,15 +1,73 @@
 import { OpenClawPageShell } from "@/components/openclaw-page-shell";
 import { TemplateCard } from "@/components/template-card";
 import { getDiscoveryBySlug } from "@/lib/categories";
-import { getPopularTemplates } from "@/lib/mock/templates";
 import { discoveryPath } from "@/lib/routes";
 import { buildSeoMetadata } from "@/lib/seo";
+import { parseTemplateListQueryFromSearchParams } from "@/lib/templates/read-schemas";
+import { listPublishedTemplatesCached } from "@/lib/templates/read-service";
+import type { TemplateListQueryInput } from "@/lib/templates/public-types";
 import type { Metadata } from "next";
 import Link from "next/link";
 
 const DISCOVERY = getDiscoveryBySlug("popular");
+export const dynamic = "force-dynamic";
 
-export function generateMetadata(): Metadata {
+type DiscoverySearchParams = {
+  sort?: string | string[];
+  page?: string | string[];
+  limit?: string | string[];
+  freeOnly?: string | string[];
+  search?: string | string[];
+};
+
+type DiscoveryPageProps = {
+  searchParams: Promise<DiscoverySearchParams>;
+};
+
+function getFirstValue(value: string | string[] | undefined) {
+  if (Array.isArray(value)) {
+    return value[0];
+  }
+
+  return value;
+}
+
+function parseDiscoveryQuery(
+  searchParams: DiscoverySearchParams,
+): TemplateListQueryInput {
+  try {
+    const parsed = parseTemplateListQueryFromSearchParams(searchParams);
+    return {
+      ...parsed,
+      sort: "popular",
+    };
+  } catch {
+    return {
+      sort: "popular",
+      page: 1,
+      limit: 20,
+      freeOnly: false,
+    };
+  }
+}
+
+function isParamHeavyVariant(
+  searchParams: DiscoverySearchParams,
+  query: TemplateListQueryInput,
+) {
+  const hasSearch = Boolean(query.search);
+  const hasPageBeyondFirst = query.page > 1;
+  const rawSort = getFirstValue(searchParams.sort);
+  const hasNonDefaultSort = rawSort !== undefined && rawSort !== "popular";
+
+  return hasSearch || hasPageBeyondFirst || hasNonDefaultSort;
+}
+
+export async function generateMetadata({
+  searchParams,
+}: DiscoveryPageProps): Promise<Metadata> {
+  const rawSearchParams = await searchParams;
+
   if (!DISCOVERY) {
     return buildSeoMetadata({
       title: "Popular OpenClaw Templates — Claws.supply",
@@ -19,15 +77,21 @@ export function generateMetadata(): Metadata {
     });
   }
 
+  const query = parseDiscoveryQuery(rawSearchParams);
+
   return buildSeoMetadata({
     title: DISCOVERY.seoTitle,
     description: DISCOVERY.seoDescription,
     path: discoveryPath(DISCOVERY.slug),
+    noindex: isParamHeavyVariant(rawSearchParams, query),
   });
 }
 
-export default function PopularTemplatesPage() {
-  const templates = getPopularTemplates();
+export default async function PopularTemplatesPage({ searchParams }: DiscoveryPageProps) {
+  const rawSearchParams = await searchParams;
+  const query = parseDiscoveryQuery(rawSearchParams);
+  const result = await listPublishedTemplatesCached(query);
+  const templates = result.items;
 
   return (
     <OpenClawPageShell>
@@ -46,11 +110,17 @@ export default function PopularTemplatesPage() {
         </div>
       </header>
 
-      <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {templates.map((template) => (
-          <TemplateCard key={template.slug} template={template} showCategory />
-        ))}
-      </section>
+      {templates.length > 0 ? (
+        <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          {templates.map((template) => (
+            <TemplateCard key={template.slug} template={template} showCategory />
+          ))}
+        </section>
+      ) : (
+        <section className="border border-border p-4 text-xs text-muted-foreground">
+          No published templates are available yet.
+        </section>
+      )}
     </OpenClawPageShell>
   );
 }

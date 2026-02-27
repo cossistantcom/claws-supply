@@ -1,12 +1,26 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
 
-const CALLBACK_URL = "/";
+const DEFAULT_REDIRECT_PATH = "/profile";
+
+function resolveSafeRedirectPath(candidate: string | null): string {
+  if (!candidate) {
+    return DEFAULT_REDIRECT_PATH;
+  }
+
+  if (!candidate.startsWith("/") || candidate.startsWith("//")) {
+    return DEFAULT_REDIRECT_PATH;
+  }
+
+  return candidate;
+}
 
 function resolveErrorMessage(error: unknown): string {
   if (
@@ -22,16 +36,17 @@ function resolveErrorMessage(error: unknown): string {
 }
 
 export default function SignUpPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const callbackURL = resolveSafeRedirectPath(searchParams.get("next"));
 
   async function handleEmailSignUp(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setErrorMessage(null);
     setIsLoading(true);
 
     const { error } = await authClient.signUp.email({
@@ -39,29 +54,33 @@ export default function SignUpPage() {
       username,
       email,
       password,
-      callbackURL: CALLBACK_URL,
+      callbackURL,
     });
 
     if (error) {
-      setErrorMessage(resolveErrorMessage(error));
+      toast.error(resolveErrorMessage(error));
       setIsLoading(false);
       return;
     }
 
+    toast.success(
+      "Account created. Next: connect X and complete Stripe verification to start selling templates.",
+    );
+    router.push(callbackURL);
+    router.refresh();
     setIsLoading(false);
   }
 
   async function handleXSignUp() {
-    setErrorMessage(null);
     setIsLoading(true);
 
     const { error } = await authClient.signIn.social({
       provider: "twitter",
-      callbackURL: CALLBACK_URL,
+      callbackURL,
     });
 
     if (error) {
-      setErrorMessage(resolveErrorMessage(error));
+      toast.error(resolveErrorMessage(error));
       setIsLoading(false);
       return;
     }
@@ -153,10 +172,6 @@ export default function SignUpPage() {
       >
         Sign up with X
       </Button>
-
-      {errorMessage ? (
-        <p className="text-xs text-destructive">{errorMessage}</p>
-      ) : null}
 
       <p className="text-xs text-muted-foreground">
         Already have an account?{" "}

@@ -79,6 +79,19 @@ export function ProfileSettingsPage() {
     );
   }, [formBio, formName, profile]);
 
+  const onboardingSteps = [
+    {
+      id: "connect-x",
+      label: "Connect your X account.",
+      completed: profile?.x.linked ?? false,
+    },
+    {
+      id: "connect-stripe",
+      label: "Complete Stripe verification.",
+      completed: profile?.stripe.verified ?? false,
+    },
+  ];
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setActionError(null);
@@ -207,6 +220,37 @@ export function ProfileSettingsPage() {
 
   return (
     <div className="flex w-full flex-col gap-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-pixel tracking-wide">Seller Onboarding</CardTitle>
+          <CardDescription>
+            Next actions to start selling templates from your profile.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {onboardingSteps.map((step) => (
+            <label
+              key={step.id}
+              className="flex items-center gap-3 text-sm text-foreground/90"
+            >
+              <input
+                type="checkbox"
+                checked={step.completed}
+                readOnly
+                aria-label={step.label}
+                className="size-4 rounded-none border border-border accent-primary"
+              />
+              <span className={step.completed ? "" : "text-muted-foreground"}>
+                {step.label}
+              </span>
+            </label>
+          ))}
+          <p className="text-xs text-muted-foreground">
+            Verified profiles are shown first.
+          </p>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <div className="flex flex-wrap items-center justify-between gap-3">

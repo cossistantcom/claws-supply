@@ -1,4 +1,4 @@
-import { jsonSuccess } from "@/lib/api/response";
+import { jsonError, jsonSuccess } from "@/lib/api/response";
 import {
   handleRouteError,
   parseSlugParams,
@@ -14,12 +14,35 @@ import {
   softDeleteTemplate,
   updateTemplateMetadata,
 } from "@/lib/templates/service";
+import { getPublishedTemplateBySlug } from "@/lib/templates/read-service";
 
 type RouteContext = {
   params: Promise<{
     slug: string;
   }>;
 };
+
+export async function GET(_request: Request, context: RouteContext) {
+  try {
+    const slug = await parseSlugParams(context.params);
+    const detail = await getPublishedTemplateBySlug(slug);
+
+    if (!detail) {
+      return jsonError("Template not found.", {
+        code: "TEMPLATE_NOT_FOUND",
+        status: 404,
+      });
+    }
+
+    return jsonSuccess(detail);
+  } catch (error) {
+    return handleRouteError(error, {
+      message: "Unable to fetch template.",
+      code: "TEMPLATE_GET_ERROR",
+      status: 400,
+    });
+  }
+}
 
 export async function PATCH(request: Request, context: RouteContext) {
   try {
