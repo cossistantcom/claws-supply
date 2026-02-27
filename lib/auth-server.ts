@@ -11,6 +11,9 @@ import { getStripeClient } from "./stripe";
 const USERNAME_MIN_LENGTH = 3;
 const USERNAME_MAX_LENGTH = 30;
 const USERNAME_FALLBACK = "user";
+const X_CLIENT_ID = process.env.X_CLIENT_ID ?? process.env.TWITER_CLIENT_ID;
+const X_CLIENT_SECRET =
+  process.env.X_CLIENT_SECRET ?? process.env.TWITER_CLIENT_SECRET;
 
 function sanitizeUsername(input: string): string {
   const cleaned = input
@@ -81,10 +84,15 @@ function createAuth() {
     emailAndPassword: {
       enabled: true,
     },
+    account: {
+      accountLinking: {
+        trustedProviders: ["twitter"],
+      },
+    },
     socialProviders: {
       twitter: {
-        clientId: process.env.X_CLIENT_ID!,
-        clientSecret: process.env.X_CLIENT_SECRET!,
+        clientId: X_CLIENT_ID!,
+        clientSecret: X_CLIENT_SECRET!,
         mapProfileToUser: (profile) => {
           const xProfile = profile as {
             data?: {
@@ -110,6 +118,9 @@ function createAuth() {
       },
     },
     user: {
+      deleteUser: {
+        enabled: true,
+      },
       additionalFields: {
         bio: {
           type: "string",

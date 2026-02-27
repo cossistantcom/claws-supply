@@ -24,10 +24,6 @@ export default async function Page() {
               <AsciiClawsShowcase />
             </div>
             <div className="flex-1 flex flex-col gap-4">
-              <p className="font-pixel text-sm tracking-wide text-primary/80">
-                [MADE FOR OPENCLAW ENTHUSIAST 🦞]
-              </p>
-
               <h1 className="font-pixel text-3xl sm:text-3xl md:text-4xl xl:text-5xl leading-[1.3] tracking-tight text-balance">
                 Explore and sell vetted OpenClaw templates.
               </h1>

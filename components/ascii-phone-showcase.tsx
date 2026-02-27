@@ -51,6 +51,11 @@ const CANVAS_HIDDEN_OPACITY = 0.012;
 const ASCII_HEARTBEAT_STALE_MS = 420;
 const ASCII_HEARTBEAT_INTERVAL_MS = 220;
 const ASCII_USE_COLOR_SPANS = false;
+const ORANGE_ASCII_PRIMARY = "var(--cossistant-orange)";
+const ORANGE_ASCII_BG =
+  "color-mix(in srgb, var(--cossistant-orange) 10%, transparent)";
+const ORANGE_ASCII_GLOW =
+  "0 0 8px color-mix(in srgb, var(--cossistant-orange) 62%, transparent), 0 0 22px color-mix(in srgb, var(--cossistant-orange) 34%, transparent)";
 
 export function AsciiPhoneShowcase() {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -250,8 +255,8 @@ function HandsAsciiCanvas({
 
       <ThrottledAsciiRenderer
         enabled={active}
-        fgColor={isDarkMode ? "#fbfbfb" : "#050505"}
-        bgColor="transparent"
+        fgColor={ORANGE_ASCII_PRIMARY}
+        bgColor={ORANGE_ASCII_BG}
         characters={isDarkMode ? DARK_ASCII_CHARS : LIGHT_ASCII_CHARS}
         color={ASCII_USE_COLOR_SPANS}
         invert={false}
@@ -306,6 +311,7 @@ function ThrottledAsciiRenderer({
     ascii.domElement.style.pointerEvents = "none";
     ascii.domElement.style.color = fgColor;
     ascii.domElement.style.backgroundColor = bgColor;
+    ascii.domElement.style.textShadow = ORANGE_ASCII_GLOW;
     ascii.domElement.style.willChange = "contents";
 
     return ascii;

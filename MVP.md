@@ -6,6 +6,29 @@
 
 ---
 
+## Build Progress
+
+- [x] DONE — Better Auth supports standalone sign-in/sign-up with X and unique usernames; org plugin removed; no subscriptions.
+- [x] DONE — Drizzle schema aligned with MVP marketplace domain (users/templates/purchases/reviews/commission overrides).
+- [x] DONE — Profile foundation shipped (`/profile`) with name/bio editing, read-only username, image+facehash avatar fallback, X linking, Stripe onboarding/status, and destructive account deletion.
+- [x] DONE — Profile API baseline shipped:
+  - `GET/PATCH/DELETE /api/profile`
+  - `POST /api/profile/x/connect`
+  - `POST /api/profile/stripe/connect`
+  - `GET /api/profile/stripe/status`
+
+### Short Tech Notes (Implemented)
+
+- Auth/OAuth: X linking uses Better Auth directly (`twitter` provider via `linkSocialAccount`); no custom OAuth flow.
+- Profile API contract: uniform JSON envelope `{ data }` on success and `{ error: { code, message } }` on failure.
+- Permissions/utilities: shared helpers in `lib/auth/session.ts` and `lib/auth/permissions.ts` for route protection and owner/admin checks.
+- Profile mutation guardrails: username is immutable in profile APIs; only `name` and `bio` are writable.
+- Deletion behavior: Better Auth `deleteUser` enabled; deletion route follows Better Auth fresh-session protection.
+- Stripe behavior: onboarding link creation + status sync updates `stripeVerified` from live Stripe account flags.
+- Env compatibility: prefer `X_CLIENT_ID/X_CLIENT_SECRET` with fallback to legacy typo vars (`TWITER_*`).
+
+---
+
 ## 1. Product Overview
 
 ### What is Claws.supply?
@@ -54,7 +77,7 @@ Verified status is displayed on their member profile and next to reviews.
 | Method                | Flow                                                                                                               |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------ |
 | **Email + Password**  | Standard sign-up / sign-in with email verification                                                                 |
-| **X (Twitter) OAuth** | Optional link to existing account. Used for profile display + verification. NOT a standalone login method for MVP. |
+| **X (Twitter) OAuth** | Standalone sign-up/sign-in method. If the user signs in with X, their handle seeds the username (with unique suffix fallback when needed). |
 
 ### 3.2 Auth-Related Data on User
 
@@ -65,12 +88,12 @@ The user record needs to track the following auth-related fields (in addition to
 - **Computed — isVerified:** true when Stripe is verified AND X account is linked
 - **Role:** "user" (default) or "admin"
 
-### 3.3 X Account Linking Flow
+### 3.3 X Sign-Up / Sign-In Flow
 
-1. User navigates to Settings → "Connect X Account"
-2. Redirect to X OAuth 2.0 flow (read-only scope)
-3. On callback, store `xAccountId` and `xUsername` on user record
-4. Re-evaluate `isVerified`
+1. User chooses "Continue with X" from sign-in/sign-up
+2. Redirect to X OAuth 2.0 flow
+3. On callback, create/sign in user and store `xAccountId`, `xUsername`, and `xLinkedAt`
+4. Username is seeded from X handle (and auto-suffixed when a collision occurs)
 
 ---
 

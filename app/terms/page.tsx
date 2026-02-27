@@ -87,6 +87,25 @@ const sections = [
     ),
   },
   {
+    title: "Template Vetting and Seller Verification",
+    content: (
+      <>
+        <p>
+          We perform best-effort vetting to reduce low-quality, harmful, or
+          misleading listings. Sellers are onboarded through Stripe Connect, and
+          seller identity verification is handled through Stripe&apos;s
+          verification process.
+        </p>
+        <p className="mt-4">
+          Templates are created and published by independent sellers. We do not
+          guarantee template quality, safety, legality, accuracy, or fitness for
+          a particular purpose, and you should use all templates with care and
+          your own judgment.
+        </p>
+      </>
+    ),
+  },
+  {
     title: "Buyer Purchases and License Scope",
     content: (
       <>
@@ -164,8 +183,9 @@ const sections = [
       <>
         <p>
           To the maximum extent permitted by law, Productized Inc. is not liable
-          for indirect, incidental, special, consequential, or punitive damages
-          arising from your use of the Service.
+          for template quality or template content, or for any indirect,
+          incidental, special, consequential, or punitive damages arising from
+          your use of the Service.
         </p>
         <p className="mt-4">
           Our aggregate liability for claims related to the Service is limited to
