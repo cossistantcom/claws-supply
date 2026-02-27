@@ -1,10 +1,5 @@
-import { HourglassLogo } from "@/components/hourglass-logo";
 import { Navbar } from "@/components/navbar";
 import { AsciiPhoneShowcase } from "@/components/ascii-phone-showcase";
-import { AsciiHourglassBackground } from "@/components/ascii-hourglass-background";
-import { SandFillBg } from "@/components/sand-fill-bg";
-import { SecureSpotForm } from "@/components/secure-spot-form";
-import { Badge } from "@/components/ui/badge";
 import { AsciiClawsShowcase } from "@/components/claws-showcase";
 import { Metadata } from "next";
 import { Menu } from "@/components/section-menu";

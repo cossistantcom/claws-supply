@@ -359,7 +359,7 @@ function AsciiHand({
   mirrored = false,
   isDarkMode,
 }: {
-  side: -1 | 1.2;
+  side: number;
   active: boolean;
   mirrored?: boolean;
   isDarkMode: boolean;
