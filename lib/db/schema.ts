@@ -1,23 +1,54 @@
+import { sql } from "drizzle-orm";
 import {
+  boolean,
+  check,
+  index,
+  integer,
+  pgEnum,
   pgTable,
   text,
   timestamp,
-  boolean,
-  integer,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
-// ─── Better-Auth Core Tables ────────────────────────────
+export const userRoleEnum = pgEnum("user_role", ["user", "admin"]);
+export const purchaseSaleTypeEnum = pgEnum("purchase_sale_type", [
+  "direct",
+  "browsing",
+]);
+export const purchaseStatusEnum = pgEnum("purchase_status", [
+  "pending",
+  "completed",
+  "failed",
+]);
 
-export const user = pgTable("user", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  email: text("email").notNull().unique(),
-  emailVerified: boolean("email_verified").notNull(),
-  image: text("image"),
-  stripeCustomerId: text("stripe_customer_id"),
-  createdAt: timestamp("created_at").notNull(),
-  updatedAt: timestamp("updated_at").notNull(),
-});
+// Better Auth core tables
+export const user = pgTable(
+  "user",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    email: text("email").notNull().unique(),
+    emailVerified: boolean("email_verified").notNull(),
+    image: text("image"),
+    username: text("username").notNull(),
+    displayUsername: text("display_username"),
+    bio: text("bio"),
+    role: userRoleEnum("role").notNull().default("user"),
+    xAccountId: text("x_account_id"),
+    xUsername: text("x_username"),
+    xLinkedAt: timestamp("x_linked_at"),
+    stripeCustomerId: text("stripe_customer_id"),
+    stripeAccountId: text("stripe_account_id"),
+    stripeVerified: boolean("stripe_verified").notNull().default(false),
+    createdAt: timestamp("created_at").notNull(),
+    updatedAt: timestamp("updated_at").notNull(),
+  },
+  (table) => ({
+    usernameUnique: uniqueIndex("user_username_unique").on(table.username),
+    xAccountIdUnique: uniqueIndex("user_x_account_id_unique").on(table.xAccountId),
+  }),
+);
 
 export const session = pgTable("session", {
   id: text("id").primaryKey(),
@@ -30,8 +61,6 @@ export const session = pgTable("session", {
   userId: text("user_id")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
-  activeOrganizationId: text("active_organization_id"),
-  activeTeamId: text("active_team_id"),
 });
 
 export const account = pgTable("account", {
@@ -61,109 +90,163 @@ export const verification = pgTable("verification", {
   updatedAt: timestamp("updated_at"),
 });
 
-// ─── Organization Tables ────────────────────────────────
+// Marketplace tables
+export const template = pgTable(
+  "template",
+  {
+    id: text("id").primaryKey(),
+    sellerId: text("seller_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    slug: text("slug").notNull(),
+    title: text("title").notNull(),
+    description: text("description").notNull(),
+    shortDescription: text("short_description").notNull(),
+    priceCents: integer("price_cents").notNull().default(0),
+    currency: text("currency").notNull().default("USD"),
+    category: text("category").notNull(),
+    zipObjectKey: text("zip_object_key").notNull(),
+    fileSizeBytes: integer("file_size_bytes").notNull(),
+    coverImageUrl: text("cover_image_url"),
+    version: text("version").notNull(),
+    isFlagged: boolean("is_flagged").notNull().default(false),
+    flagReason: text("flag_reason"),
+    downloadCount: integer("download_count").notNull().default(0),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    slugUnique: uniqueIndex("template_slug_unique").on(table.slug),
+    sellerIdx: index("template_seller_id_idx").on(table.sellerId),
+    categoryIdx: index("template_category_idx").on(table.category),
+    flaggedIdx: index("template_is_flagged_idx").on(table.isFlagged),
+    createdAtIdx: index("template_created_at_idx").on(table.createdAt),
+    priceCheck: check("template_price_cents_check", sql`${table.priceCents} >= 0`),
+    fileSizeCheck: check(
+      "template_file_size_bytes_check",
+      sql`${table.fileSizeBytes} >= 0`,
+    ),
+    downloadCountCheck: check(
+      "template_download_count_check",
+      sql`${table.downloadCount} >= 0`,
+    ),
+  }),
+);
 
-export const organization = pgTable("organization", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  slug: text("slug").notNull().unique(),
-  logo: text("logo"),
-  metadata: text("metadata"),
-  stripeCustomerId: text("stripe_customer_id"),
-  createdAt: timestamp("created_at").notNull(),
-});
+export const purchase = pgTable(
+  "purchase",
+  {
+    id: text("id").primaryKey(),
+    buyerId: text("buyer_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    sellerId: text("seller_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    templateId: text("template_id")
+      .notNull()
+      .references(() => template.id, { onDelete: "cascade" }),
+    priceCents: integer("price_cents").notNull(),
+    commissionRate: integer("commission_rate").notNull(),
+    platformFeeAmountCents: integer("platform_fee_amount_cents").notNull(),
+    sellerPayoutAmountCents: integer("seller_payout_amount_cents").notNull(),
+    saleType: purchaseSaleTypeEnum("sale_type").notNull(),
+    referralCode: text("referral_code"),
+    stripePaymentIntentId: text("stripe_payment_intent_id"),
+    stripeTransferId: text("stripe_transfer_id"),
+    status: purchaseStatusEnum("status").notNull().default("pending"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    buyerTemplateUnique: uniqueIndex("purchase_buyer_template_unique").on(
+      table.buyerId,
+      table.templateId,
+    ),
+    buyerIdx: index("purchase_buyer_id_idx").on(table.buyerId),
+    sellerIdx: index("purchase_seller_id_idx").on(table.sellerId),
+    templateIdx: index("purchase_template_id_idx").on(table.templateId),
+    createdAtIdx: index("purchase_created_at_idx").on(table.createdAt),
+    priceCheck: check("purchase_price_cents_check", sql`${table.priceCents} >= 0`),
+    commissionRateCheck: check(
+      "purchase_commission_rate_check",
+      sql`${table.commissionRate} >= 0 AND ${table.commissionRate} <= 100`,
+    ),
+    platformFeeCheck: check(
+      "purchase_platform_fee_check",
+      sql`${table.platformFeeAmountCents} >= 0`,
+    ),
+    sellerPayoutCheck: check(
+      "purchase_seller_payout_check",
+      sql`${table.sellerPayoutAmountCents} >= 0`,
+    ),
+  }),
+);
 
-export const member = pgTable("member", {
-  id: text("id").primaryKey(),
-  userId: text("user_id")
-    .notNull()
-    .references(() => user.id, { onDelete: "cascade" }),
-  organizationId: text("organization_id")
-    .notNull()
-    .references(() => organization.id, { onDelete: "cascade" }),
-  role: text("role").notNull(),
-  createdAt: timestamp("created_at").notNull(),
-});
+export const review = pgTable(
+  "review",
+  {
+    id: text("id").primaryKey(),
+    templateId: text("template_id")
+      .notNull()
+      .references(() => template.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    rating: integer("rating").notNull(),
+    title: text("title"),
+    body: text("body"),
+    isVerifiedPurchase: boolean("is_verified_purchase").notNull().default(false),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    templateUserUnique: uniqueIndex("review_template_user_unique").on(
+      table.templateId,
+      table.userId,
+    ),
+    templateIdx: index("review_template_id_idx").on(table.templateId),
+    userIdx: index("review_user_id_idx").on(table.userId),
+    createdAtIdx: index("review_created_at_idx").on(table.createdAt),
+    ratingCheck: check(
+      "review_rating_check",
+      sql`${table.rating} >= 1 AND ${table.rating} <= 5`,
+    ),
+    titleLengthCheck: check(
+      "review_title_length_check",
+      sql`${table.title} IS NULL OR char_length(${table.title}) <= 200`,
+    ),
+  }),
+);
 
-export const invitation = pgTable("invitation", {
-  id: text("id").primaryKey(),
-  email: text("email").notNull(),
-  inviterId: text("inviter_id")
-    .notNull()
-    .references(() => user.id, { onDelete: "cascade" }),
-  organizationId: text("organization_id")
-    .notNull()
-    .references(() => organization.id, { onDelete: "cascade" }),
-  role: text("role").notNull(),
-  status: text("status").notNull(),
-  teamId: text("team_id"),
-  expiresAt: timestamp("expires_at").notNull(),
-  createdAt: timestamp("created_at").notNull(),
-});
-
-// ─── Team Tables ────────────────────────────────────────
-
-export const team = pgTable("team", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  organizationId: text("organization_id")
-    .notNull()
-    .references(() => organization.id, { onDelete: "cascade" }),
-  createdAt: timestamp("created_at").notNull(),
-  updatedAt: timestamp("updated_at"),
-});
-
-export const teamMember = pgTable("team_member", {
-  id: text("id").primaryKey(),
-  teamId: text("team_id")
-    .notNull()
-    .references(() => team.id, { onDelete: "cascade" }),
-  userId: text("user_id")
-    .notNull()
-    .references(() => user.id, { onDelete: "cascade" }),
-  createdAt: timestamp("created_at").notNull(),
-});
-
-// ─── Stripe Subscription Table ──────────────────────────
-
-export const subscription = pgTable("subscription", {
-  id: text("id").primaryKey(),
-  plan: text("plan").notNull(),
-  referenceId: text("reference_id").notNull(),
-  stripeCustomerId: text("stripe_customer_id"),
-  stripeSubscriptionId: text("stripe_subscription_id"),
-  status: text("status").notNull().default("incomplete"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-  periodStart: timestamp("period_start"),
-  periodEnd: timestamp("period_end"),
-  cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
-  cancelAt: timestamp("cancel_at"),
-  canceledAt: timestamp("canceled_at"),
-  endedAt: timestamp("ended_at"),
-  seats: integer("seats"),
-  trialStart: timestamp("trial_start"),
-  trialEnd: timestamp("trial_end"),
-});
-
-export const botInstance = pgTable("bot_instance", {
-  id: text("id").primaryKey(),
-  organizationId: text("organization_id")
-    .notNull()
-    .references(() => organization.id, { onDelete: "cascade" })
-    .unique(),
-  railwayProjectId: text("railway_project_id").notNull(),
-  railwayEnvironmentId: text("railway_environment_id").notNull(),
-  railwayServiceId: text("railway_service_id").unique(),
-  railwayServiceName: text("railway_service_name"),
-  railwayDeploymentId: text("railway_deployment_id"),
-  imageRef: text("image_ref").notNull(),
-  status: text("status").notNull().default("not_deployed"),
-  successUrl: text("success_url"),
-  lastRailwayStatus: text("last_railway_status"),
-  lastError: text("last_error"),
-  deployedAt: timestamp("deployed_at"),
-  deletedAt: timestamp("deleted_at"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+export const commissionOverride = pgTable(
+  "commission_override",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    directRate: integer("direct_rate").notNull(),
+    browsingRate: integer("browsing_rate").notNull(),
+    notes: text("notes"),
+    createdByAdminId: text("created_by_admin_id")
+      .notNull()
+      .references(() => user.id),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    userUnique: uniqueIndex("commission_override_user_id_unique").on(table.userId),
+    userIdx: index("commission_override_user_id_idx").on(table.userId),
+    createdByAdminIdx: index("commission_override_created_by_admin_id_idx").on(
+      table.createdByAdminId,
+    ),
+    directRateCheck: check(
+      "commission_override_direct_rate_check",
+      sql`${table.directRate} >= 0 AND ${table.directRate} <= 100`,
+    ),
+    browsingRateCheck: check(
+      "commission_override_browsing_rate_check",
+      sql`${table.browsingRate} >= 0 AND ${table.browsingRate} <= 100`,
+    ),
+  }),
+);

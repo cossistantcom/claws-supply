@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ProgressiveBlur } from "./progresive-blur";
 import { cn } from "@/lib/utils";
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     function onScroll() {
@@ -51,6 +53,7 @@ export function Navbar() {
             <Button
               variant="ghost"
               className="font-pixel text-xs tracking-wider"
+              onClick={() => router.push("/auth/sign-in")}
             >
               LOGIN
             </Button>

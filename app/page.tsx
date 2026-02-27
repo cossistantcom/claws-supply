@@ -3,6 +3,7 @@ import { AsciiPhoneShowcase } from "@/components/ascii-phone-showcase";
 import { AsciiClawsShowcase } from "@/components/claws-showcase";
 import { Metadata } from "next";
 import { Menu } from "@/components/section-menu";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Claws supply - explore, generate and sell OpenClaw templates",
@@ -66,15 +67,21 @@ export default async function Page() {
 
       {/* ── FOOTER ── */}
       <footer className="py-8 px-6">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
+        <div className="max-w-5xl mx-auto flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <span className="font-pixel text-sm tracking-wider uppercase">
               claws.supply
             </span>
           </div>
-          <span className="text-[10px] text-muted-foreground font-pixel tracking-wider">
-            2026
-          </span>
+          <div className="flex items-center gap-4 text-[10px] font-pixel tracking-wider text-muted-foreground">
+            <Link className="hover:text-foreground" href="/terms">
+              TERMS
+            </Link>
+            <Link className="hover:text-foreground" href="/policy">
+              POLICY
+            </Link>
+            <span>2026</span>
+          </div>
         </div>
       </footer>
       <Navbar />

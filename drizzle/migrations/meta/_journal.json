@@ -22,6 +22,13 @@
       "when": 1771559647737,
       "tag": "0002_eminent_shocker",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1772164549401,
+      "tag": "0003_massive_firedrake",
+      "breakpoints": true
     }
   ]
 }
