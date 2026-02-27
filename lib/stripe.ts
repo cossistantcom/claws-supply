@@ -1,5 +1,4 @@
 import Stripe from "stripe";
-import { getBetterAuthPlans } from "./pricing/config";
 
 let stripeClient: Stripe | null = null;
 
@@ -11,6 +10,3 @@ export function getStripeClient(): Stripe {
   }
   return stripeClient;
 }
-
-export { getBetterAuthPlans };
-export type { TierName } from "./pricing/types";
