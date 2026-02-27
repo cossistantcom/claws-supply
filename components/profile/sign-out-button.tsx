@@ -46,7 +46,7 @@ export function SignOutButton() {
       variant="outline"
       onClick={handleSignOut}
       disabled={isLoading}
-      className="font-pixel text-xs tracking-wider"
+      className="text-xs tracking-wider"
     >
       {isLoading ? (
         <>
@@ -54,10 +54,7 @@ export function SignOutButton() {
           SIGNING OUT...
         </>
       ) : (
-        <>
-          <LogOutIcon />
-          LOG OUT
-        </>
+        <>LOG OUT</>
       )}
     </Button>
   );

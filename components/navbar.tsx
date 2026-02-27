@@ -1,8 +1,10 @@
 "use client";
 
+import { Avatar, AvatarImage } from "facehash";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { CossistantAvatarFallback } from "@/components/profile/cossistant-avatar-fallback";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
 import { ProgressiveBlur } from "./progresive-blur";
@@ -12,10 +14,11 @@ export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const router = useRouter();
   const session = authClient.useSession();
-  const isLoggedIn = Boolean(session.data);
+  const user = session.data?.user;
+  const isLoggedIn = Boolean(user);
   const accountHref = isLoggedIn ? "/profile" : "/auth/sign-in";
   const accountLabel = isLoggedIn ? "PROFILE" : "LOGIN";
-  const uploadHref = isLoggedIn ? "/profile" : "/auth/sign-up?next=/profile";
+  const avatarName = user?.name || user?.email || "user";
 
   useEffect(() => {
     function onScroll() {
@@ -60,21 +63,29 @@ export function Navbar() {
             </Link>
           </div>
           <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              className="font-pixel text-xs tracking-wider"
-              onClick={() => router.push(accountHref)}
-            >
-              {accountLabel}
-            </Button>
-            <div className="pixel-ui">
+            {isLoggedIn ? (
               <Button
-                className="font-pixel text-xs tracking-wider"
-                onClick={() => router.push(uploadHref)}
+                variant="ghost"
+                className="h-auto rounded-none p-0 hover:bg-transparent"
+                onClick={() => router.push(accountHref)}
+                aria-label={accountLabel}
               >
-                UPLOAD YOUR TEMPLATE
+                <Avatar className="size-8 overflow-hidden border border-border bg-muted">
+                  {user?.image ? (
+                    <AvatarImage src={user.image} alt={`${avatarName} avatar`} />
+                  ) : null}
+                  <CossistantAvatarFallback className="text-black" name={avatarName} />
+                </Avatar>
               </Button>
-            </div>
+            ) : (
+              <Button
+                variant="ghost"
+                className="text-xs tracking-wider"
+                onClick={() => router.push(accountHref)}
+              >
+                {accountLabel}
+              </Button>
+            )}
           </div>
         </div>
       </nav>

@@ -96,15 +96,15 @@ export default async function PopularTemplatesPage({ searchParams }: DiscoveryPa
   return (
     <OpenClawPageShell>
       <header className="space-y-3 border-b border-border pb-6">
-        <p className="font-pixel text-[11px] tracking-wider text-muted-foreground uppercase">
+        <p className="text-[11px] tracking-wider text-muted-foreground uppercase">
           Discovery
         </p>
-        <h1 className="font-pixel text-3xl sm:text-4xl">Popular Templates</h1>
+        <h1 className="text-3xl sm:text-4xl">Popular Templates</h1>
         <p className="text-sm text-muted-foreground max-w-2xl">
           Most-downloaded OpenClaw AI agent templates right now.
         </p>
         <div className="flex items-center gap-4 text-xs">
-          <Link className="font-pixel hover:underline" href={discoveryPath("latest")}>
+          <Link className="hover:underline" href={discoveryPath("latest")}>
             View Latest
           </Link>
         </div>

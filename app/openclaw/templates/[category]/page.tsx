@@ -1,10 +1,11 @@
 import { OpenClawPageShell } from "@/components/openclaw-page-shell";
 import { TemplateCard } from "@/components/template-card";
+import { getCategoryBySlug, isCategorySlug } from "@/lib/categories";
 import {
-  getCategoryBySlug,
-  isCategorySlug,
-} from "@/lib/categories";
-import { categoryPath, categoryPathWithSort, discoveryPath } from "@/lib/routes";
+  categoryPath,
+  categoryPathWithSort,
+  discoveryPath,
+} from "@/lib/routes";
 import { buildSeoMetadata } from "@/lib/seo";
 import { parseTemplateListQueryFromSearchParams } from "@/lib/templates/read-schemas";
 import { listPublishedTemplatesCached } from "@/lib/templates/read-service";
@@ -67,7 +68,8 @@ function isParamHeavyVariant(
   query: TemplateListQueryInput,
 ) {
   const hasSearch = Boolean(query.search);
-  const hasNonDefaultSort = getFirstValue(searchParams.sort) !== undefined && query.sort !== "popular";
+  const hasNonDefaultSort =
+    getFirstValue(searchParams.sort) !== undefined && query.sort !== "popular";
   const hasPageBeyondFirst = query.page > 1;
 
   return hasSearch || hasNonDefaultSort || hasPageBeyondFirst;
@@ -77,7 +79,10 @@ export async function generateMetadata({
   params,
   searchParams,
 }: CategoryPageProps): Promise<Metadata> {
-  const [{ category }, rawSearchParams] = await Promise.all([params, searchParams]);
+  const [{ category }, rawSearchParams] = await Promise.all([
+    params,
+    searchParams,
+  ]);
 
   if (!isCategorySlug(category)) {
     return buildSeoMetadata({
@@ -112,7 +117,10 @@ export default async function CategoryTemplatesPage({
   params,
   searchParams,
 }: CategoryPageProps) {
-  const [{ category }, rawSearchParams] = await Promise.all([params, searchParams]);
+  const [{ category }, rawSearchParams] = await Promise.all([
+    params,
+    searchParams,
+  ]);
 
   if (!isCategorySlug(category)) {
     notFound();
@@ -134,10 +142,10 @@ export default async function CategoryTemplatesPage({
   return (
     <OpenClawPageShell>
       <header className="space-y-3 border-b border-border pb-6">
-        <p className="font-pixel text-[11px] tracking-wider text-muted-foreground uppercase">
+        <p className="text-[11px] tracking-wider text-muted-foreground uppercase">
           Category
         </p>
-        <h1 className="font-pixel text-3xl sm:text-4xl">{categoryDefinition.label}</h1>
+        <h1 className="text-3xl sm:text-4xl">{categoryDefinition.label}</h1>
         <p className="text-sm text-muted-foreground max-w-2xl">
           {categoryDefinition.description}
         </p>
@@ -146,7 +154,7 @@ export default async function CategoryTemplatesPage({
           <Link
             href={categoryPath(categoryDefinition.slug)}
             className={[
-              "border border-border px-3 py-1 text-[11px] font-pixel uppercase tracking-wide",
+              "border border-border px-3 py-1 text-[11px] uppercase tracking-wide",
               selectedSort === "popular"
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:text-foreground",
@@ -157,25 +165,13 @@ export default async function CategoryTemplatesPage({
           <Link
             href={categoryPathWithSort(categoryDefinition.slug, "latest")}
             className={[
-              "border border-border px-3 py-1 text-[11px] font-pixel uppercase tracking-wide",
+              "border border-border px-3 py-1 text-[11px] uppercase tracking-wide",
               selectedSort === "newest"
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:text-foreground",
             ].join(" ")}
           >
             Latest
-          </Link>
-          <Link
-            href={discoveryPath("popular")}
-            className="ml-2 text-xs text-muted-foreground hover:text-foreground"
-          >
-            Global popular
-          </Link>
-          <Link
-            href={discoveryPath("latest")}
-            className="text-xs text-muted-foreground hover:text-foreground"
-          >
-            Global latest
           </Link>
         </div>
       </header>

@@ -3,5 +3,5 @@ export default function OpenClawLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <main className="min-h-screen px-6 pt-24 pb-16">{children}</main>;
+  return <main className="min-h-screen px-6 pt-24 pb-16 md:px-0">{children}</main>;
 }

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { GeistMono } from "geist/font/mono";
 import { GeistPixelSquare } from "geist/font/pixel";
 import { Navbar } from "@/components/navbar";
+import { SiteFooter } from "@/components/site-footer";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 import { MainProviders } from "./providers";
@@ -26,6 +27,7 @@ export default async function RootLayout({
         <MainProviders>
           <Navbar />
           {children}
+          <SiteFooter />
           <Toaster />
         </MainProviders>
       </body>

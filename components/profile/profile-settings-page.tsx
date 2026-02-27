@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, type FormEvent } from "react";
-import { Avatar, AvatarFallback, AvatarImage } from "facehash";
+import { Avatar, AvatarImage } from "facehash";
 import {
   ExternalLinkIcon,
   Loader2Icon,
@@ -11,11 +11,19 @@ import {
   UserRoundIcon,
 } from "lucide-react";
 import { DeleteAccountDialog } from "@/components/profile/delete-account-dialog";
+import { CossistantAvatarFallback } from "@/components/profile/cossistant-avatar-fallback";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import Image from "next/image";
 import {
   useConnectStripeMutation,
   useConnectXMutation,
@@ -36,6 +44,14 @@ function getErrorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
+function ProviderLogoBadge({ src, alt }: { src: string; alt: string }) {
+  return (
+    <div className="flex size-6 shrink-0 items-center justify-center rounded-none text-primary fill-primary">
+      <Image src={src} alt={alt} width={24} height={24} />
+    </div>
+  );
+}
+
 export function ProfileSettingsPage() {
   const profileQuery = useProfileQuery();
   const updateProfileMutation = useUpdateProfileMutation();
@@ -53,7 +69,7 @@ export function ProfileSettingsPage() {
 
   const profile = profileQuery.data;
   const formName = draftProfile?.name ?? profile?.name ?? "";
-  const formBio = draftProfile?.bio ?? (profile?.bio ?? "");
+  const formBio = draftProfile?.bio ?? profile?.bio ?? "";
 
   const hasPendingConnectionAction =
     connectXMutation.isPending ||
@@ -221,8 +237,94 @@ export function ProfileSettingsPage() {
   return (
     <div className="flex w-full flex-col gap-6">
       <Card>
+        <CardContent className="space-y-5">
+          <div className="flex items-center gap-4">
+            <Avatar className="size-12 overflow-hidden border border-border bg-muted">
+              {profile.image ? (
+                <AvatarImage
+                  src={profile.image}
+                  alt={`${profile.name} avatar`}
+                />
+              ) : null}
+              <CossistantAvatarFallback
+                className="text-black"
+                name={profile.username || profile.name || "user"}
+              />
+            </Avatar>
+            <div className="space-y-2">
+              <p className="text-base">@{profile.username}</p>
+              <Badge variant={isVerifiedSeller ? "secondary" : "outline"}>
+                {isVerifiedSeller ? "Verified seller 🦞" : "Not verified yet"}
+              </Badge>
+            </div>
+          </div>
+
+          <form className="space-y-4" onSubmit={handleSubmit}>
+            <div className="space-y-1">
+              <label
+                htmlFor="profile-name"
+                className="text-xs uppercase tracking-wide"
+              >
+                Name
+              </label>
+              <Input
+                id="profile-name"
+                value={formName}
+                onChange={(event) =>
+                  setDraftProfile((current) => ({
+                    name: event.target.value,
+                    bio: current?.bio ?? profile.bio ?? "",
+                  }))
+                }
+                maxLength={80}
+                required
+              />
+            </div>
+            <div className="space-y-1">
+              <label
+                htmlFor="profile-bio"
+                className="text-xs uppercase tracking-wide"
+              >
+                Bio
+              </label>
+              <Textarea
+                id="profile-bio"
+                value={formBio}
+                onChange={(event) =>
+                  setDraftProfile((current) => ({
+                    name: current?.name ?? profile.name,
+                    bio: event.target.value,
+                  }))
+                }
+                maxLength={280}
+                rows={5}
+                placeholder="Tell people what you create."
+              />
+            </div>
+
+            <div className="flex justify-end">
+              <Button
+                type="submit"
+                className="self-end"
+                disabled={!hasProfileChanges || updateProfileMutation.isPending}
+              >
+                {updateProfileMutation.isPending ? (
+                  <>
+                    <Loader2Icon className="animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>Save</>
+                )}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card>
         <CardHeader>
-          <CardTitle className="font-pixel tracking-wide">Seller Onboarding</CardTitle>
+          <CardTitle className="tracking-wide">Onboarding checklist</CardTitle>
           <CardDescription>
             Next actions to start selling templates from your profile.
           </CardDescription>
@@ -245,7 +347,7 @@ export function ProfileSettingsPage() {
               </span>
             </label>
           ))}
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-primary/50 mt-6">
             Verified profiles are shown first.
           </p>
         </CardContent>
@@ -253,218 +355,140 @@ export function ProfileSettingsPage() {
 
       <Card>
         <CardHeader>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="space-y-1">
-              <CardTitle className="font-pixel tracking-wide">Profile Settings</CardTitle>
-              <CardDescription>
-                Manage your public profile and linked seller accounts.
-              </CardDescription>
-            </div>
-            <Badge variant={isVerifiedSeller ? "secondary" : "outline"}>
-              {isVerifiedSeller ? "Verified seller" : "Not verified"}
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          <div className="flex items-center gap-4">
-            <Avatar className="size-20 overflow-hidden border border-border bg-muted">
-              {profile.image ? (
-                <AvatarImage src={profile.image} alt={`${profile.name} avatar`} />
-              ) : null}
-              <AvatarFallback name={profile.username || profile.name || "user"} />
-            </Avatar>
-            <div className="space-y-1">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                Public username
-              </p>
-              <p className="font-pixel text-sm">@{profile.username}</p>
-              <p className="text-xs text-muted-foreground">
-                Username is fixed and can&apos;t be edited here.
-              </p>
-            </div>
-          </div>
-
-          <form className="space-y-4" onSubmit={handleSubmit}>
-            <div className="space-y-1">
-              <label htmlFor="profile-name" className="text-xs uppercase tracking-wide">
-                Name
-              </label>
-              <Input
-                id="profile-name"
-                value={formName}
-                onChange={(event) =>
-                  setDraftProfile((current) => ({
-                    name: event.target.value,
-                    bio: current?.bio ?? (profile.bio ?? ""),
-                  }))
-                }
-                maxLength={80}
-                required
-              />
-            </div>
-            <div className="space-y-1">
-              <label htmlFor="profile-bio" className="text-xs uppercase tracking-wide">
-                Bio
-              </label>
-              <Textarea
-                id="profile-bio"
-                value={formBio}
-                onChange={(event) =>
-                  setDraftProfile((current) => ({
-                    name: current?.name ?? profile.name,
-                    bio: event.target.value,
-                  }))
-                }
-                maxLength={280}
-                rows={5}
-                placeholder="Tell people what you create."
-              />
-            </div>
-
-            <Button
-              type="submit"
-              disabled={!hasProfileChanges || updateProfileMutation.isPending}
-            >
-              {updateProfileMutation.isPending ? (
-                <>
-                  <Loader2Icon className="animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <SaveIcon />
-                  Save profile
-                </>
-              )}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="font-pixel tracking-wide">Connected Accounts</CardTitle>
+          <CardTitle className="tracking-wide">Connected Accounts</CardTitle>
           <CardDescription>
-            Link X and Stripe to become a verified seller and earn from templates.
+            Link X and Stripe to become a verified seller and earn from
+            templates.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-5">
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="space-y-1">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">X Account</p>
-                <p className="text-sm">
+        <CardContent className="space-y-4">
+          <section
+            className={`p-4 ${
+              profile.x.linked
+                ? "border border-border bg-background"
+                : "border border-dashed border-cossistant-orange/20 bg-cossistant-orange/5"
+            }`}
+          >
+            <div className="space-y-3">
+              <div className="flex-1 space-y-1">
+                <p className="text-sm">X Account</p>
+                <p className="text-xs text-muted-foreground">
                   {profile.x.linked
-                    ? `Linked as @${profile.x.username ?? "unknown"}`
-                    : "Not linked"}
+                    ? `Linked as @${profile.x.username ?? "unknown"}.`
+                    : "Connect X to complete seller identity setup."}
                 </p>
               </div>
-              <Badge variant={profile.x.linked ? "secondary" : "outline"}>
-                {profile.x.linked ? "Linked" : "Not linked"}
-              </Badge>
-            </div>
-            <Button
-              variant={profile.x.linked ? "outline" : "default"}
-              onClick={handleConnectX}
-              disabled={profile.x.linked || hasPendingConnectionAction}
-            >
-              {connectXMutation.isPending ? (
-                <>
-                  <Loader2Icon className="animate-spin" />
-                  Connecting...
-                </>
-              ) : profile.x.linked ? (
-                "X linked"
-              ) : (
-                <>
-                  <ExternalLinkIcon />
-                  Connect X account
-                </>
-              )}
-            </Button>
-          </div>
 
-          <div className="space-y-2 border-t pt-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="space-y-1">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Stripe Seller Account
-                </p>
-                <p className="text-sm">
-                  {profile.stripe.connected
-                    ? profile.stripe.verified
-                      ? "Connected and verified"
-                      : "Connected, pending verification"
-                    : "Not connected"}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Badge variant={profile.stripe.connected ? "secondary" : "outline"}>
-                  {profile.stripe.connected ? "Connected" : "Not connected"}
-                </Badge>
-                <Badge variant={profile.stripe.verified ? "secondary" : "outline"}>
-                  {profile.stripe.verified ? "Verified" : "Pending"}
-                </Badge>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <Button onClick={handleConnectStripe} disabled={hasPendingConnectionAction}>
-                {connectStripeMutation.isPending ? (
-                  <>
-                    <Loader2Icon className="animate-spin" />
-                    Redirecting...
-                  </>
+              <div className="mt-6 flex justify-end">
+                {!profile.x.linked ? (
+                  <Button
+                    onClick={handleConnectX}
+                    disabled={hasPendingConnectionAction}
+                  >
+                    {connectXMutation.isPending ? (
+                      <>
+                        <Loader2Icon className="animate-spin" />
+                        Connecting...
+                      </>
+                    ) : (
+                      <>Connect X account</>
+                    )}
+                  </Button>
                 ) : (
-                  <>
-                    <ExternalLinkIcon />
-                    {profile.stripe.connected
-                      ? "Continue Stripe onboarding"
-                      : "Connect Stripe account"}
-                  </>
+                  <p className="text-xs text-muted-foreground">
+                    X account connected.
+                  </p>
                 )}
-              </Button>
-
-              <Button
-                variant="outline"
-                onClick={handleRefreshStripeStatus}
-                disabled={hasPendingConnectionAction}
-              >
-                {refreshStripeMutation.isPending ? (
-                  <>
-                    <Loader2Icon className="animate-spin" />
-                    Refreshing...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCwIcon />
-                    Refresh status
-                  </>
-                )}
-              </Button>
+              </div>
             </div>
+          </section>
 
-            {profile.stripe.connected ? (
-              <p className="text-xs text-muted-foreground">
-                Details submitted: {profile.stripe.detailsSubmitted ? "yes" : "no"} ·
-                Charges enabled: {profile.stripe.chargesEnabled ? "yes" : "no"} ·
-                Payouts enabled: {profile.stripe.payoutsEnabled ? "yes" : "no"}
-              </p>
-            ) : null}
-          </div>
+          <section
+            className={`p-4 ${
+              profile.stripe.connected
+                ? "border border-border bg-background"
+                : "border border-dashed border-cossistant-orange/20 bg-cossistant-orange/5"
+            }`}
+          >
+            <div className="space-y-3">
+              <div className="flex-1 space-y-1">
+                <p className="text-sm">Stripe Seller Account</p>
+                <p className="text-xs text-muted-foreground">
+                  {!profile.stripe.connected
+                    ? "Connect Stripe to receive payouts from template sales."
+                    : profile.stripe.verified
+                      ? "Verified and ready for payouts."
+                      : "Onboarding started. Complete Stripe verification to sell paid templates."}
+                </p>
+              </div>
+
+              <div className="mt-6 flex justify-end">
+                {!profile.stripe.connected ? (
+                  <Button
+                    onClick={handleConnectStripe}
+                    disabled={hasPendingConnectionAction}
+                  >
+                    {connectStripeMutation.isPending ? (
+                      <>
+                        <Loader2Icon className="animate-spin" />
+                        Redirecting...
+                      </>
+                    ) : (
+                      <>Connect Stripe account</>
+                    )}
+                  </Button>
+                ) : profile.stripe.verified ? (
+                  <p className="text-right text-xs text-muted-foreground">
+                    Stripe account verified.
+                  </p>
+                ) : (
+                  <div className="mt-1 flex w-full flex-row items-center justify-between gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={handleRefreshStripeStatus}
+                      disabled={hasPendingConnectionAction}
+                    >
+                      {refreshStripeMutation.isPending ? (
+                        <>
+                          <Loader2Icon className="animate-spin" />
+                          Refreshing...
+                        </>
+                      ) : (
+                        <>Refresh</>
+                      )}
+                    </Button>
+                    <Button
+                      onClick={handleConnectStripe}
+                      disabled={hasPendingConnectionAction}
+                    >
+                      {connectStripeMutation.isPending ? (
+                        <>
+                          <Loader2Icon className="animate-spin" />
+                          Redirecting...
+                        </>
+                      ) : (
+                        <>Continue Stripe onboarding</>
+                      )}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="mt-40">
         <CardHeader>
-          <CardTitle className="font-pixel tracking-wide text-destructive">Danger Zone</CardTitle>
+          <CardTitle className="tracking-wide text-destructive">
+            Danger Zone
+          </CardTitle>
           <CardDescription>
             Account deletion is permanent. This cannot be undone.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <UserRoundIcon className="size-4" />
             Delete your account and remove all access immediately.
           </div>
           <DeleteAccountDialog
@@ -482,7 +506,9 @@ export function ProfileSettingsPage() {
         </div>
       ) : null}
 
-      {actionError ? <p className="text-xs text-destructive">{actionError}</p> : null}
+      {actionError ? (
+        <p className="text-xs text-destructive">{actionError}</p>
+      ) : null}
     </div>
   );
 }

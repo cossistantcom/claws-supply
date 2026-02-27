@@ -1,10 +1,10 @@
 import { Metadata } from "next";
 import { AsciiPhoneShowcase } from "@/components/ascii-phone-showcase";
 import { AsciiClawsShowcase } from "@/components/claws-showcase";
-import { Menu } from "@/components/section-menu";
+import { OpenClawPageShell } from "@/components/openclaw-page-shell";
 import { TemplateCard } from "@/components/template-card";
-import { CATEGORIES, DISCOVERY_PAGES } from "@/lib/categories";
-import { categoryPath, discoveryPath } from "@/lib/routes";
+import { CATEGORIES } from "@/lib/categories";
+import { categoryPath } from "@/lib/routes";
 import {
   getTemplateCountsForMenuCached,
   listPublishedTemplatesCached,
@@ -20,18 +20,8 @@ export const metadata: Metadata = {
 };
 
 export default async function Page() {
-  const [counts, discoveryResults, categoryResults] = await Promise.all([
+  const [counts, categoryResults] = await Promise.all([
     getTemplateCountsForMenuCached(),
-    Promise.all(
-      DISCOVERY_PAGES.map((discovery) =>
-        listPublishedTemplatesCached({
-          sort: discovery.slug === "latest" ? "newest" : "popular",
-          page: 1,
-          limit: 4,
-          freeOnly: false,
-        }),
-      ),
-    ),
     Promise.all(
       CATEGORIES.map((category) =>
         listPublishedTemplatesCached({
@@ -45,13 +35,6 @@ export default async function Page() {
     ),
   ]);
 
-  const discoverySections = DISCOVERY_PAGES.map((discovery, index) => ({
-    ...discovery,
-    href: discoveryPath(discovery.slug),
-    templates: discoveryResults[index]?.items ?? [],
-    count: counts.discovery[discovery.slug],
-  }));
-
   const categorySections = CATEGORIES.map((category, index) => ({
     ...category,
     href: categoryPath(category.slug),
@@ -61,17 +44,14 @@ export default async function Page() {
 
   return (
     <>
-      <div className="overflow-x-clip min-h-screen relative mt-40 flex gap-6 px-6 md:px-0">
-        <div className="hidden md:flex sticky top-40 h-[calc(100vh-3rem)]">
-          <Menu />
-        </div>
-        <div className="flex flex-col gap-10 w-full max-w-4xl mx-auto">
+      <div className="overflow-x-clip min-h-screen relative mt-40 px-6 md:px-0">
+        <OpenClawPageShell contentClassName="w-full max-w-4xl space-y-10">
           <div className="flex items-stretch gap-10">
             <div className="2xl:block hidden aspect-square h-full w-full max-w-40 overflow-clip relative bg-primary/[0.03]">
               <AsciiClawsShowcase />
             </div>
             <div className="flex-1 flex flex-col gap-4">
-              <h1 className="font-pixel text-3xl sm:text-3xl md:text-4xl xl:text-5xl leading-[1.3] tracking-tight text-balance">
+              <h1 className="text-3xl sm:text-3xl md:text-4xl xl:text-5xl leading-[1.3] tracking-tight text-balance">
                 Explore and sell vetted OpenClaw templates.
               </h1>
 
@@ -79,46 +59,10 @@ export default async function Page() {
                 Discover trending Openclaw templates and deploy pre-configured,
                 production-ready OpenClaw AI agents faster.
               </p>
-
-              <div className="flex flex-wrap items-center gap-3 pt-2">
-                <Link
-                  className="border border-border px-3 py-1 font-pixel text-xs hover:bg-muted transition-colors"
-                  href={discoveryPath("popular")}
-                >
-                  BROWSE POPULAR
-                </Link>
-                <Link
-                  className="border border-border px-3 py-1 font-pixel text-xs hover:bg-muted transition-colors"
-                  href={discoveryPath("latest")}
-                >
-                  BROWSE LATEST
-                </Link>
-              </div>
             </div>
           </div>
-          {/*
-          <section className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {discoverySections.map((section) => (
-              <Link
-                key={section.slug}
-                href={section.href}
-                className="border border-border p-4 space-y-2 hover:bg-muted/30 transition-colors"
-              >
-                <p className="font-pixel text-xs uppercase tracking-wide text-muted-foreground">
-                  Discovery
-                </p>
-                <h2 className="font-pixel text-xl">{section.label}</h2>
-                <p className="text-xs text-muted-foreground">
-                  {section.description}
-                </p>
-                <p className="text-[11px] text-muted-foreground">
-                  {section.count} templates indexed
-                </p>
-              </Link>
-            ))}
-          </section> */}
 
-          <section className="space-y-12">
+          <section className="space-y-12 pt-8 md:pt-12">
             {categorySections.map((section) => (
               <article key={section.slug} className="space-y-4">
                 <header className="space-y-2">
@@ -126,11 +70,11 @@ export default async function Page() {
                     href={section.href}
                     className="inline-flex items-center gap-2"
                   >
-                    <h2 className="font-pixel text-2xl hover:underline">
+                    <h2 className="text-lg sm:text-xl font-semibold leading-tight hover:underline">
                       {section.label}
                     </h2>
-                    <span className="text-xs text-muted-foreground">
-                      ({section.count})
+                    <span className="text-xs font-medium text-cossistant-orange">
+                      [{section.count}]
                     </span>
                   </Link>
                   <p className="text-sm text-muted-foreground">
@@ -152,52 +96,15 @@ export default async function Page() {
               </article>
             ))}
           </section>
-        </div>
-        <aside className="hidden lg:flex sticky top-40 h-[calc(100vh-3rem)] right-0 w-64 gap-4 flex-col pr-6 text-xs">
-          <div className="bg-primary/5 flex items-center justify-center w-full h-12">
-            advertise here
-          </div>
-          <div className="bg-primary/5 flex items-center justify-center w-full h-12">
-            advertise here
-          </div>
-          <div className="bg-primary/5 flex items-center justify-center w-full h-12">
-            advertise here
-          </div>
-          <div className="bg-primary/5 flex items-center justify-center w-full h-12">
-            advertise here
-          </div>
-          <div className="bg-primary/5 flex items-center justify-center w-full h-12">
-            advertise here
-          </div>
-        </aside>
+        </OpenClawPageShell>
       </div>
 
       {/* ── DAILY BRIEFING PHONE ── */}
-      <section className="bg-background overflow-x-clip">
+      <section className="bg-background overflow-x-clip mt-40">
         <div className="relative left-1/2 w-screen -translate-x-1/2">
           <AsciiPhoneShowcase />
         </div>
       </section>
-
-      {/* ── FOOTER ── */}
-      <footer className="py-8 px-6">
-        <div className="max-w-5xl mx-auto flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <span className="font-pixel text-sm tracking-wider uppercase">
-              claws.supply
-            </span>
-          </div>
-          <div className="flex items-center gap-4 text-[10px] font-pixel tracking-wider text-muted-foreground">
-            <Link className="hover:text-foreground" href="/terms">
-              TERMS
-            </Link>
-            <Link className="hover:text-foreground" href="/policy">
-              POLICY
-            </Link>
-            <span>2026</span>
-          </div>
-        </div>
-      </footer>
     </>
   );
 }

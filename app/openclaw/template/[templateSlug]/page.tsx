@@ -82,7 +82,7 @@ export default async function TemplateDetailPage({ params }: TemplatePageProps) 
           <span className="text-foreground">{detail.template.title}</span>
         </div>
 
-        <h1 className="font-pixel text-3xl sm:text-4xl">{detail.template.title}</h1>
+        <h1 className="text-3xl sm:text-4xl">{detail.template.title}</h1>
         <p className="text-sm text-muted-foreground max-w-2xl">
           {detail.template.description}
         </p>
@@ -90,29 +90,29 @@ export default async function TemplateDetailPage({ params }: TemplatePageProps) 
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4 text-xs">
           <div className="border border-border p-3">
             <p className="text-muted-foreground">Price</p>
-            <p className="font-pixel text-sm">
+            <p className="text-sm">
               {formatPrice(detail.template.priceCents, detail.template.currency)}
             </p>
           </div>
           <div className="border border-border p-3">
             <p className="text-muted-foreground">Downloads</p>
-            <p className="font-pixel text-sm">
+            <p className="text-sm">
               {detail.stats.downloadCount.toLocaleString()}
             </p>
           </div>
           <div className="border border-border p-3">
             <p className="text-muted-foreground">Rating</p>
-            <p className="font-pixel text-sm">{detail.stats.rating.toFixed(1)}</p>
+            <p className="text-sm">{detail.stats.rating.toFixed(1)}</p>
           </div>
           <div className="border border-border p-3">
             <p className="text-muted-foreground">Reviews</p>
-            <p className="font-pixel text-sm">{detail.stats.reviewCount}</p>
+            <p className="text-sm">{detail.stats.reviewCount}</p>
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-4 text-xs">
           {category ? (
-            <Link className="font-pixel hover:underline" href={categoryPath(category.slug)}>
+            <Link className="hover:underline" href={categoryPath(category.slug)}>
               Browse {category.label}
             </Link>
           ) : null}
@@ -126,9 +126,9 @@ export default async function TemplateDetailPage({ params }: TemplatePageProps) 
       </header>
 
       <section className="space-y-3">
-        <h2 className="font-pixel text-lg">Seller</h2>
+        <h2 className="text-lg">Seller</h2>
         <div className="border border-border p-4 text-sm">
-          <p className="font-pixel text-base">{detail.seller.displayName}</p>
+          <p className="text-base">{detail.seller.displayName}</p>
           <p className="text-muted-foreground">@{detail.seller.username}</p>
           <p className="text-muted-foreground mt-2">
             {detail.seller.isVerified
@@ -140,7 +140,7 @@ export default async function TemplateDetailPage({ params }: TemplatePageProps) 
 
       {relatedTemplates.length > 0 ? (
         <section className="space-y-4">
-          <h2 className="font-pixel text-lg">Similar Templates</h2>
+          <h2 className="text-lg">Similar Templates</h2>
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             {relatedTemplates.map((relatedTemplate) => (
               <TemplateCard key={relatedTemplate.slug} template={relatedTemplate} />

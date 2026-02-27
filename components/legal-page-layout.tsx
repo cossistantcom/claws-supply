@@ -20,10 +20,10 @@ export function LegalPageLayout({
     <main className="min-h-screen px-6 py-24">
       <div className="mx-auto w-full max-w-3xl space-y-10">
         <header className="space-y-3 border-b border-border pb-6">
-          <p className="font-pixel text-xs tracking-wider text-muted-foreground uppercase">
+          <p className="text-xs tracking-wider text-muted-foreground uppercase">
             Legal
           </p>
-          <h1 className="font-pixel text-3xl leading-tight sm:text-4xl">
+          <h1 className="text-3xl leading-tight sm:text-4xl">
             {title}
           </h1>
           <p className="text-sm text-muted-foreground">
@@ -34,7 +34,7 @@ export function LegalPageLayout({
         <div className="space-y-8">
           {sections.map((section) => (
             <section key={section.title} className="space-y-3">
-              <h2 className="font-pixel text-lg sm:text-xl">{section.title}</h2>
+              <h2 className="text-lg sm:text-xl">{section.title}</h2>
               <div className="space-y-4 text-sm leading-7 text-foreground/90">
                 {section.content}
               </div>

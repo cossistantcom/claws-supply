@@ -28,14 +28,14 @@ export function TemplateCard({ template, showCategory = false }: TemplateCardPro
       {showCategory && category ? (
         <Link
           href={categoryPath(category.slug)}
-          className="w-fit text-[10px] tracking-wide uppercase font-pixel text-muted-foreground hover:text-foreground transition-colors"
+          className="w-fit text-[10px] tracking-wide uppercase text-muted-foreground hover:text-foreground transition-colors"
         >
           {category.label}
         </Link>
       ) : null}
 
       <div className="space-y-2">
-        <h3 className="font-pixel text-base leading-tight">
+        <h3 className="text-base leading-tight">
           <Link className="hover:underline" href={templatePath(template.slug)}>
             {template.title}
           </Link>
@@ -55,7 +55,7 @@ export function TemplateCard({ template, showCategory = false }: TemplateCardPro
       <div className="mt-auto flex items-center justify-between border-t border-border pt-3 text-[11px]">
         <p className="text-muted-foreground">by @{template.seller.username}</p>
         <Link
-          className="font-pixel text-xs hover:underline underline-offset-4"
+          className="text-xs hover:underline underline-offset-4"
           href={templatePath(template.slug)}
         >
           View Template
