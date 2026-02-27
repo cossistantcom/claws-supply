@@ -23,7 +23,7 @@ jobs:
           bun install
           bun add -g drizzle-orm drizzle-kit pg
       - name: Apply migrations using drizzle-kit
-        run: bun run db:migrate
+        run: bun run migrate
         env:
           DATABASE_HOST: ${{ secrets.DATABASE_HOST }}
           DATABASE_PORT: ${{ secrets.DATABASE_PORT }}
