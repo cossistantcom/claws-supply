@@ -22,8 +22,6 @@ import {
   Texture,
 } from "three";
 import { AsciiEffect } from "three-stdlib";
-import { DailyBriefing } from "@/components/daily-briefing";
-import { PhoneMockup } from "@/components/phone-mockup";
 
 const DARK_ASCII_CHARS =
   " .'`^\",:;Il!i~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$";
@@ -32,14 +30,14 @@ const LIGHT_ASCII_CHARS =
 const HAND_PLANE_HEIGHT = 4.15;
 const FALLBACK_HAND_ASPECT = 0.74;
 const LUMA_INVERSION_MIX = 2;
-const LUMA_CONTRAST = 4;
+const LUMA_CONTRAST = 1;
 const HANDS_DELAY_MS = 0;
 const DARK_LUMA_WINDOW = [145, 255] as const;
 const LIGHT_LUMA_WINDOW = [0, 120] as const;
 const KEY_ALPHA_HARD = 12;
 const KEY_ALPHA_SOFT = 24;
 const ASCII_RESOLUTION = {
-  desktop: { dark: 0.25, light: 0.25 },
+  desktop: { dark: 0.2, light: 0.2 },
   mobile: { dark: 0.15, light: 0.145 },
 } as const;
 const ASCII_FPS = {
@@ -47,11 +45,7 @@ const ASCII_FPS = {
   mobile: 16,
   reducedMotion: 12,
 } as const;
-const PHONE_REVEAL_SPRING = {
-  stiffness: 220,
-  damping: 25,
-  mass: 0.72,
-} as const;
+
 const CANVAS_VISIBLE_OPACITY = 0.2;
 const CANVAS_HIDDEN_OPACITY = 0.012;
 const ASCII_HEARTBEAT_STALE_MS = 420;
@@ -93,9 +87,6 @@ export function AsciiPhoneShowcase() {
       ref={containerRef}
       className="relative w-full h-[500px] sm:h-[620px] lg:h-[660px] overflow-visible"
     >
-      <div className="absolute inset-x-10 top-16 h-52 rounded-full bg-[radial-gradient(circle,_rgba(255,255,255,0.14)_0%,_rgba(255,255,255,0)_72%)] dark:opacity-90 opacity-30 blur-3xl pointer-events-none" />
-      <div className="absolute inset-x-8 bottom-8 h-44 rounded-full bg-[radial-gradient(circle,_rgba(255,255,255,0.08)_0%,_rgba(255,255,255,0)_78%)] dark:opacity-100 opacity-30 blur-2xl pointer-events-none" />
-
       <motion.div
         className="absolute inset-0 pointer-events-none"
         initial={false}
@@ -116,35 +107,6 @@ export function AsciiPhoneShowcase() {
           />
         </div>
       </motion.div>
-
-      <div className="absolute inset-0 z-20 grid place-items-center">
-        <motion.div
-          initial={false}
-          animate={
-            phase === "idle"
-              ? { opacity: 0, y: 38, scale: 0.96, rotateX: 10 }
-              : {
-                  opacity: 1,
-                  y: 0,
-                  scale: 1,
-                  rotateX: 0,
-                }
-          }
-          transition={{
-            type: prefersReducedMotion ? "tween" : "spring",
-            stiffness: PHONE_REVEAL_SPRING.stiffness,
-            damping: PHONE_REVEAL_SPRING.damping,
-            mass: PHONE_REVEAL_SPRING.mass,
-            duration: prefersReducedMotion ? 0.28 : undefined,
-          }}
-          className="origin-bottom"
-          style={{ transformStyle: "preserve-3d" }}
-        >
-          <PhoneMockup className="drop-shadow-[0_30px_60px_rgba(0,0,0,0.45)]">
-            <DailyBriefing />
-          </PhoneMockup>
-        </motion.div>
-      </div>
     </div>
   );
 }
@@ -283,12 +245,7 @@ function HandsAsciiCanvas({
     >
       <Suspense fallback={null}>
         <AsciiHand side={-1} active={active} isDarkMode={isDarkMode} />
-        <AsciiHand
-          side={1.2}
-          active={active}
-          mirrored
-          isDarkMode={isDarkMode}
-        />
+        <AsciiHand side={1} active={active} mirrored isDarkMode={isDarkMode} />
       </Suspense>
 
       <ThrottledAsciiRenderer
@@ -406,14 +363,14 @@ function AsciiHand({
   mirrored = false,
   isDarkMode,
 }: {
-  side: -1 | 1.2;
+  side: -1 | 1;
   active: boolean;
   mirrored?: boolean;
   isDarkMode: boolean;
 }) {
   const groupRef = useRef<Group>(null);
   const meshRef = useRef<Mesh>(null);
-  const texture = useTexture("/hand-phone.png");
+  const texture = useTexture("/claw.png");
   const keyedTexture = useMemo(
     () => buildKeyedHandTexture(texture, isDarkMode),
     [isDarkMode, texture],

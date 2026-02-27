@@ -5,9 +5,9 @@ import "./globals.css";
 import { MainProviders } from "./providers";
 
 export const metadata: Metadata = {
-  title: "hourglass.bot — Your Leads, Delivered Daily",
+  title: "Claws supply - explore, generate and sell OpenClaw templates",
   description:
-    "We configure a dedicated OpenClaw bot for you. It runs 24/7, finds qualified leads, verifies them, and delivers them straight to you. No setup. No maintenance.",
+    "Quickstart your OpenClaw setup with pre-configured templates and join a community of OpenClaw enthusiasts.",
 };
 
 export default async function RootLayout({
@@ -20,7 +20,7 @@ export default async function RootLayout({
       lang="en"
       className={`dark ${GeistPixelSquare.variable} ${GeistMono.variable}`}
     >
-      <body className="font-mono antialiased bg-background text-foreground">
+      <body className="font-mono antialiased bg-background text-foreground min-h-screen">
         <MainProviders>{children}</MainProviders>
       </body>
     </html>

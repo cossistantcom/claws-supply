@@ -8,6 +8,20 @@
       "when": 1771150666636,
       "tag": "0000_youthful_triathlon",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1771308090809,
+      "tag": "0001_flaky_big_bertha",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1771559647737,
+      "tag": "0002_eminent_shocker",
+      "breakpoints": true
     }
   ]
 }

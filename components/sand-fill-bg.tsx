@@ -1,12 +1,18 @@
 "use client";
 
-import { createContext, useContext, useEffect, useRef, useCallback } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useCallback,
+} from "react";
 import { cn } from "@/lib/utils";
 
 type SandFillVariant = "default" | "hourglass";
 
 interface SandFillBgProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
   className?: string;
   backgroundLayer?: React.ReactNode;
   variant?: SandFillVariant;
@@ -48,7 +54,7 @@ interface SandSimulationContextValue {
 }
 
 const SandSimulationContext = createContext<SandSimulationContextValue | null>(
-  null
+  null,
 );
 
 export function useSandSimulation() {
@@ -75,16 +81,16 @@ const PROFILE_BY_VARIANT: Record<SandFillVariant, SandFillProfile> = {
     rollThreshold: 0,
   },
   hourglass: {
-    grain: 3,
-    spawnRate: 3,
+    grain: 4,
+    spawnRate: 2,
     gravity: 0.12,
-    fillRatio: 0.14,
-    sandAlpha: 0.08,
-    particleAlpha: 0.14,
+    fillRatio: 0.3,
+    sandAlpha: 0.02,
+    particleAlpha: 0.2,
     fadeSpeed: 0.008,
     pauseFrames: 110,
-    spawnSpread: 0.45,
-    drift: 2.0,
+    spawnSpread: 0.15,
+    drift: 4.0,
     rollThreshold: 0,
   },
 };
@@ -293,7 +299,7 @@ export function SandFillBg({
           c * profile.grain,
           h - pileHeight * profile.grain,
           profile.grain,
-          pileHeight * profile.grain
+          pileHeight * profile.grain,
         );
       }
 
@@ -304,7 +310,7 @@ export function SandFillBg({
             Math.floor(p.x / profile.grain) * profile.grain,
             Math.floor(p.y / profile.grain) * profile.grain,
             profile.grain,
-            profile.grain
+            profile.grain,
           );
         }
       }
@@ -335,7 +341,7 @@ export function SandFillBg({
       ([entry]) => {
         visible = entry.isIntersecting;
       },
-      { threshold: 0 }
+      { threshold: 0 },
     );
     intersectionObserver.observe(wrap);
 

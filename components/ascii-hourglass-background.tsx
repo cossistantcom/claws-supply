@@ -51,7 +51,7 @@ export function AsciiHourglassBackground({
       const grid = new Uint8Array(asciiCols * asciiRows);
 
       // Mark settled sand from heightmap
-      const { heightmap, cols: simCols, rows: simRows } = sim;
+      const { heightmap, cols: simCols } = sim;
       for (let ac = 0; ac < asciiCols; ac++) {
         // Which simulation column range maps to this ASCII column
         const simColStart = Math.floor(ac * scaleX);

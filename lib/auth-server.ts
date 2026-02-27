@@ -1,15 +1,19 @@
-import { betterAuth } from "better-auth";
+import { APIError, betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { toNextJsHandler } from "better-auth/next-js";
 import { organization } from "better-auth/plugins";
 import { stripe } from "@better-auth/stripe";
+import { and, eq } from "drizzle-orm";
 import { db } from "./db";
 import * as schema from "./db/schema";
-import { getStripeClient, getBetterAuthPlans, getTier } from "./stripe";
-import type { TierName } from "./stripe";
+import { getTierConfig, getBetterAuthPlans } from "./pricing/config";
+import { isPlanSelectable, getPricingSnapshot } from "./pricing/service";
+import { getStripeClient } from "./stripe";
+import type { TierName } from "./pricing/types";
 
-// Lazily initialised so the module can be imported during Next.js static
-// page-data collection when env vars are not yet available.
+function isTierName(value: string): value is TierName {
+  return value === "founding" || value === "next" || value === "final";
+}
 
 function createAuth() {
   return betterAuth({
@@ -36,13 +40,47 @@ function createAuth() {
         subscription: {
           enabled: true,
           plans: getBetterAuthPlans(),
+          authorizeReference: async ({ user, referenceId }) => {
+            const membership = await db
+              .select({ id: schema.member.id })
+              .from(schema.member)
+              .where(
+                and(
+                  eq(schema.member.organizationId, referenceId),
+                  eq(schema.member.userId, user.id),
+                ),
+              )
+              .limit(1);
+
+            return membership.length > 0;
+          },
           getCheckoutSessionParams: async ({ plan }) => {
-            const tier = getTier(plan.name as TierName);
+            if (!isTierName(plan.name)) {
+              throw new APIError("BAD_REQUEST", {
+                message: "Selected plan is invalid.",
+              });
+            }
+
+            const pricing = await getPricingSnapshot({ forceFresh: true });
+            if (pricing.integrityStatus === "degraded" && plan.name !== "final") {
+              throw new APIError("BAD_REQUEST", {
+                message:
+                  "Discounted tiers are temporarily unavailable. Please choose the final tier.",
+              });
+            }
+
+            if (!isPlanSelectable(pricing, plan.name)) {
+              throw new APIError("BAD_REQUEST", {
+                message:
+                  "Selected plan is no longer available. Refresh and choose an available tier.",
+              });
+            }
+
+            const couponId = getTierConfig(plan.name).couponId;
+
             return {
               params: {
-                ...(tier.couponId
-                  ? { discounts: [{ coupon: tier.couponId }] }
-                  : {}),
+                ...(couponId ? { discounts: [{ coupon: couponId }] } : {}),
               },
             };
           },
@@ -57,13 +95,13 @@ function createAuth() {
 
 type Auth = ReturnType<typeof createAuth>;
 
-let _auth: Auth | null = null;
+let cachedAuth: Auth | null = null;
 
 export function getAuth(): Auth {
-  if (!_auth) {
-    _auth = createAuth();
+  if (!cachedAuth) {
+    cachedAuth = createAuth();
   }
-  return _auth;
+  return cachedAuth;
 }
 
 export const auth = new Proxy({} as Auth, {
@@ -74,13 +112,13 @@ export const auth = new Proxy({} as Auth, {
 
 export type Session = typeof auth.$Infer.Session;
 
-let _handler: ReturnType<typeof toNextJsHandler> | null = null;
+let cachedHandler: ReturnType<typeof toNextJsHandler> | null = null;
 
 function getHandler() {
-  if (!_handler) {
-    _handler = toNextJsHandler(getAuth());
+  if (!cachedHandler) {
+    cachedHandler = toNextJsHandler(getAuth());
   }
-  return _handler;
+  return cachedHandler;
 }
 
 export const handler = {

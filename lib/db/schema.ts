@@ -133,6 +133,8 @@ export const subscription = pgTable("subscription", {
   stripeCustomerId: text("stripe_customer_id"),
   stripeSubscriptionId: text("stripe_subscription_id"),
   status: text("status").notNull().default("incomplete"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
   periodStart: timestamp("period_start"),
   periodEnd: timestamp("period_end"),
   cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
@@ -142,4 +144,26 @@ export const subscription = pgTable("subscription", {
   seats: integer("seats"),
   trialStart: timestamp("trial_start"),
   trialEnd: timestamp("trial_end"),
+});
+
+export const botInstance = pgTable("bot_instance", {
+  id: text("id").primaryKey(),
+  organizationId: text("organization_id")
+    .notNull()
+    .references(() => organization.id, { onDelete: "cascade" })
+    .unique(),
+  railwayProjectId: text("railway_project_id").notNull(),
+  railwayEnvironmentId: text("railway_environment_id").notNull(),
+  railwayServiceId: text("railway_service_id").unique(),
+  railwayServiceName: text("railway_service_name"),
+  railwayDeploymentId: text("railway_deployment_id"),
+  imageRef: text("image_ref").notNull(),
+  status: text("status").notNull().default("not_deployed"),
+  successUrl: text("success_url"),
+  lastRailwayStatus: text("last_railway_status"),
+  lastError: text("last_error"),
+  deployedAt: timestamp("deployed_at"),
+  deletedAt: timestamp("deleted_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

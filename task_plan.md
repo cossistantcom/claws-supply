@@ -1,87 +1,81 @@
-# Task Plan: Better Auth + Organization + Stripe Setup
+# Task Plan: Railway Integration — Deploy Clawbot Per Subscriber
 
 ## Goal
-Set up Better Auth with Organization, Team, and Stripe plugins. Subscription is attached to the organization (not the user). Full onboarding flow: landing page CTA -> signup with email (auto-generated password) -> auto-create org + Stripe customer -> confirmation page -> plan selection via Stripe Checkout.
+Integrate Railway into the Hourglass dashboard so each paying subscriber can deploy their own clawbot instance with one click, track deployment progress in real-time, and get a success link when deployed.
 
-## Current State
-- Better Auth configured with basic email/password (no plugins)
-- Drizzle schema has manually created Stripe tables (wrong format for plugin)
-- No organization/team tables
-- No migrations run yet (fresh DB)
-- Docker Compose Postgres ready on port 5499
-- Stripe + @better-auth/stripe packages already installed
+## Current Phase
+Phase 1
 
----
+## Phases
 
-## Phase 1: Schema & Auth Configuration `status: pending`
-**Files to modify:**
-- `lib/db/schema.ts` - Replace manual Stripe tables + add org/team tables
-- `lib/auth-server.ts` - Add organization + stripe plugins
-- `lib/auth-client.ts` - Add organization + stripe client plugins
-- `.env.local` - Add BETTER_AUTH_SECRET, STRIPE keys
+### Phase 1: Database Schema & Migration
+- [ ] Add `bot` table to `lib/db/schema.ts` (organizationId, railwayServiceId, railwayDeploymentId, status, serviceUrl, etc.)
+- [ ] Generate Drizzle migration
+- [ ] Run migration
+- **Status:** pending
 
-**Tasks:**
-1. Rewrite `lib/db/schema.ts` with all Better Auth plugin tables:
-   - Core: user (+ stripeCustomerId), session (+ activeOrganizationId, activeTeamId), account, verification
-   - Organization: organization (+ stripeCustomerId), member, invitation
-   - Team: team, teamMember
-   - Stripe: subscription (Better Auth format: plan, referenceId, stripeCustomerId, stripeSubscriptionId, status, periodStart/End, cancelAtPeriodEnd, cancelAt, canceledAt, endedAt, seats, trialStart/End)
-2. Configure `lib/auth-server.ts` with organization + stripe plugins
-3. Configure `lib/auth-client.ts` with organization + stripe client plugins
-4. Update `.env.local` with BETTER_AUTH_SECRET + STRIPE keys
+### Phase 2: Railway Server Module (`lib/railway/`)
+- [ ] Create `lib/railway/client.ts` — GraphQL client wrapper (fetch-based, typed)
+- [ ] Create `lib/railway/mutations.ts` — createService, setVariables, deploy, redeploy
+- [ ] Create `lib/railway/queries.ts` — getDeployment, getService, getDeploymentStatus
+- [ ] Create `lib/railway/types.ts` — TypeScript types for Railway API responses
+- **Status:** pending
 
-## Phase 2: Stripe Utility & Plans Config `status: pending`
-**Files to create:**
-- `lib/stripe.ts` - Stripe client instance + plans config
+### Phase 3: API Routes
+- [ ] `POST /api/bot/deploy` — Create Railway service + trigger deploy + insert bot record
+- [ ] `GET /api/bot/status` — Return current bot status (polls Railway if deploying)
+- [ ] Both routes: auth-protected, org-scoped, idempotent (prevent double deploys)
+- **Status:** pending
 
-**Tasks:**
-1. Create clean Stripe utility with:
-   - Stripe client initialization
-   - Plan definitions with env-based price IDs (dev vs prod)
-   - Type-safe plan config exported for use in auth + UI
-   - Three tiers: founding ($299), next ($449), final ($799)
+### Phase 4: Install React Query & Wire Up Provider
+- [ ] Install `@tanstack/react-query`
+- [ ] Add `QueryClientProvider` to `app/providers.tsx`
+- **Status:** pending
 
-## Phase 3: Database Migration `status: pending`
-**Tasks:**
-1. Start Postgres via Docker Compose
-2. Generate Drizzle migration from updated schema
-3. Run migration
-4. Verify tables created correctly
+### Phase 5: Dashboard UI — Bot Deploy Panel
+- [ ] Create `components/dashboard/bot-deploy-panel.tsx` — main panel component
+- [ ] States: `idle` (no bot) → `deploying` (building/deploying) → `live` (success link) → `failed` (retry)
+- [ ] Use React Query `useMutation` for deploy action
+- [ ] Use React Query `useQuery` with polling for status tracking during deploy
+- [ ] Display deployment URL on success
+- **Status:** pending
 
-## Phase 4: Onboarding API & Flow `status: pending`
-**Files to create:**
-- `app/api/onboard/route.ts` - Signup + org creation endpoint
-- `app/(onboarding)/layout.tsx` - Onboarding layout
-- `app/(onboarding)/welcome/page.tsx` - Confirmation / "what's next" page
-- `app/(onboarding)/choose-plan/page.tsx` - Plan selection page
+### Phase 6: Integrate Into Dashboard Page
+- [ ] Update `app/dashboard/page.tsx` to pass bot data to client
+- [ ] Add `BotDeployPanel` alongside existing `BillingPanel`
+- [ ] Server-side: load bot record for the org, pass initial state as props
+- **Status:** pending
 
-**Tasks:**
-1. Create onboarding API route:
-   - Accept email from form
-   - Generate strong password
-   - Sign up user via Better Auth API
-   - Create org for user (named after email/name)
-   - Stripe customer auto-created for org via plugin
-   - Set active org on session
-   - Return session for auto-login
-2. Create welcome/confirmation page with premium "what's next"
-3. Create plan selection page that triggers Stripe Checkout
+### Phase 7: Testing & Verification
+- [ ] Verify TypeScript compiles (`bun run build`)
+- [ ] Verify deploy flow end-to-end (manual test)
+- [ ] Verify idempotency (can't double-deploy)
+- [ ] Verify status polling works and stops on terminal state
+- **Status:** pending
 
-## Phase 5: Landing Page Integration `status: pending`
-**Tasks:**
-1. Add email capture to CTA sections on landing page
-2. Wire "APPLY FOR ACCESS" buttons to trigger onboarding
-3. Handle redirect to /welcome after signup
+## Key Questions
+1. What Docker image to deploy? → `ghcr.io/OWNER/clawbot:latest` (configurable via env var `RAILWAY_BOT_IMAGE`)
+2. What env vars does clawbot need? → At minimum: `BOT_ID`, `ORG_ID` (extend later)
+3. What Railway project ID to deploy into? → Env var `RAILWAY_PROJECT_ID`
+4. What Railway environment ID? → Env var `RAILWAY_ENVIRONMENT_ID`
 
----
+## Decisions Made
+
+| Decision | Rationale |
+|----------|-----------|
+| Single `bot` table, one row per org | 1 sub = 1 bot; simple FK to organization |
+| Stateless services (no volumes) | Avoids 20-volume quota limit on Railway Pro |
+| Poll-based status tracking | Simpler than webhooks for MVP; React Query polling is trivial |
+| Server-side Railway calls only | Token stays server-side; API routes proxy to Railway |
+| Idempotent deploy endpoint | Prevents accidental double-deploys; returns existing bot if already deployed |
+| React Query for data fetching | User requirement; clean cache/polling/mutation patterns |
 
 ## Errors Encountered
 | Error | Attempt | Resolution |
 |-------|---------|------------|
+|       | 1       |            |
 
-## Decisions
-- Stripe customer attached to ORGANIZATION, not user
-- Organization auto-created on signup
-- Password auto-generated (email-only signup UX)
-- Teams enabled for future use
-- Three tiers: Founding $299, Next $449, Final $799
+## Notes
+- Railway env vars needed: `RAILWAY_API_TOKEN`, `RAILWAY_PROJECT_ID`, `RAILWAY_ENVIRONMENT_ID`, `RAILWAY_BOT_IMAGE`
+- Bot status enum mirrors Railway's: `idle`, `building`, `deploying`, `success`, `failed`, `crashed`
+- Deploy endpoint is the critical path: create service → set vars → trigger deploy → save to DB

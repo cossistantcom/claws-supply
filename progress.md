@@ -1,40 +1,79 @@
 # Progress Log
 
-## Session: 2026-02-15 — Better Auth + Org + Stripe Setup
+## Session: 2026-02-20
 
-### Planning
-- [x] Explored full codebase structure
-- [x] Fetched Better Auth Stripe + Organization plugin docs
-- [x] Created task plan with 5 phases
+### Phase 0: Research & Discovery
+- **Status:** complete
+- **Started:** session start
+- Actions taken:
+  - Explored full codebase structure (Next.js 16, Better-Auth, Drizzle, Stripe)
+  - Mapped current dashboard flow (auth check → org check → sub check → billing panel)
+  - Analyzed Railway API docs (GraphQL mutations for service creation, deployment, variables)
+  - Reviewed Railway research document (volume limits, pricing, architecture options)
+  - Identified all files to create/modify
+- Files read:
+  - `app/dashboard/page.tsx` — dashboard page with auth guards
+  - `components/dashboard/billing-panel.tsx` — existing billing panel pattern
+  - `app/providers.tsx` — only NuqsAdapter, needs QueryClientProvider
+  - `lib/db/schema.ts` — current DB schema (user, session, org, subscription tables)
+  - `lib/db/index.ts` — Drizzle connection setup
+  - `package.json` — current deps (no React Query yet)
+  - `next.config.ts` — redirects only
 
-### Phase 1: Schema & Auth Configuration — COMPLETE
-- [x] Rewrote `lib/db/schema.ts` — 10 tables: user, session, account, verification, organization, member, invitation, team, teamMember, subscription
-- [x] Added `stripeCustomerId` to user + organization
-- [x] Added `activeOrganizationId` + `activeTeamId` to session
-- [x] Subscription table uses Better Auth format (plan, referenceId, etc.)
+### Phase 1: Database Schema & Migration
+- **Status:** pending
+- Actions taken:
+  -
+- Files created/modified:
+  -
 
-### Phase 2: Auth Server + Client + Stripe — COMPLETE
-- [x] `lib/auth-server.ts` — organization plugin (teams enabled) + stripe plugin (org billing enabled)
-- [x] `lib/auth-client.ts` — organizationClient + stripeClient plugins
-- [x] `lib/stripe.ts` — Stripe client + 3-tier plan config with env-based price IDs
-- [x] `.env.local` — added BETTER_AUTH_SECRET + Stripe env vars
-- [x] `.env.template` — updated with all new vars
+### Phase 2: Railway Server Module
+- **Status:** pending
+- Actions taken:
+  -
+- Files created/modified:
+  -
 
-### Phase 3: Database Migration — COMPLETE
-- [x] Postgres started via Docker Compose
-- [x] Generated migration: `drizzle/migrations/0000_youthful_triathlon.sql`
-- [x] Ran migration successfully — all 10 tables verified
+### Phase 3: API Routes
+- **Status:** pending
+- Actions taken:
+  -
+- Files created/modified:
+  -
 
-### Phase 4: Onboarding API & Flow — COMPLETE
-- [x] `app/api/onboard/route.ts` — signup + org creation + session cookie
-- [x] `app/(onboarding)/layout.tsx` — minimal onboarding layout
-- [x] `app/(onboarding)/welcome/page.tsx` — "what's next" confirmation page
-- [x] `app/(onboarding)/choose-plan/page.tsx` — plan selection with Stripe checkout
+### Phase 4: React Query Setup
+- **Status:** pending
+- Actions taken:
+  -
+- Files created/modified:
+  -
 
-### Phase 5: Landing Page Integration — COMPLETE
-- [x] `components/secure-spot-form.tsx` — email capture form component
-- [x] Replaced all 3 "APPLY FOR ACCESS" buttons with SecureSpotForm
-- [x] Form submits to /api/onboard, redirects to /welcome on success
+### Phase 5: Dashboard UI
+- **Status:** pending
+- Actions taken:
+  -
+- Files created/modified:
+  -
 
-### Type Safety
-- Zero new TS errors (all errors are pre-existing in ascii-phone-showcase + sand-fill-bg)
+### Phase 6: Dashboard Integration
+- **Status:** pending
+- Actions taken:
+  -
+- Files created/modified:
+  -
+
+### Phase 7: Testing & Verification
+- **Status:** pending
+- Actions taken:
+  -
+- Files created/modified:
+  -
+
+## 5-Question Reboot Check
+| Question | Answer |
+|----------|--------|
+| Where am I? | Phase 0 complete, ready to start Phase 1 |
+| Where am I going? | 7 phases: schema → railway module → API → react-query → UI → integration → test |
+| What's the goal? | One-click bot deploy per subscriber via Railway, with status tracking and success link |
+| What have I learned? | See findings.md — Railway GraphQL API, no volumes needed, poll-based status |
+| What have I done? | Research & discovery complete, all planning files created |
