@@ -2,7 +2,7 @@
 
 > **Purpose:** This document defines the complete MVP for **Claws.supply**, a marketplace for OpenClaw.ai agent templates. It is written for an AI coding agent to implement end-to-end.
 >
-> **Stack:** Next.js 14+ (App Router) · Drizzle ORM · PostgreSQL · Better Auth (already set up) · Stripe Connect · S3-compatible storage
+> **Stack:** Next.js 14+ (App Router) · Drizzle ORM · PostgreSQL · Better Auth (already set up) · Stripe Connect · Vercel Blob (public + private stores)
 
 ---
 
@@ -16,6 +16,23 @@
   - `POST /api/profile/x/connect`
   - `POST /api/profile/stripe/connect`
   - `GET /api/profile/stripe/status`
+- [x] DONE — Template lifecycle mutation API shipped with Zod validation and owner/admin authorization:
+  - `POST /api/templates` (create draft)
+  - `PATCH /api/templates/[slug]` (edit metadata)
+  - `POST /api/templates/[slug]/publish` (publish first version)
+  - `POST /api/templates/[slug]/versions/publish` (publish new version)
+  - `POST /api/templates/[slug]/unpublish`
+  - `DELETE /api/templates/[slug]` (soft delete via lifecycle status)
+- [x] DONE — Blob architecture migrated to dual-store Vercel Blob client upload:
+  - Public covers via `BLOB_READ_WRITE_TOKEN`
+  - Private template zip artifacts via `PRIVATE_READ_WRITE_TOKEN`
+  - Handle endpoints:
+    - `POST /api/templates/[slug]/uploads/cover-handle`
+    - `POST /api/templates/[slug]/uploads/template-handle`
+- [x] DONE — Secure private download route shipped:
+  - `GET /api/templates/[slug]/download` streams private blob server-side (no public/private signed URL exposed to client).
+- [x] DONE — Reusable frontend upload primitives shipped:
+  - `useBlobUpload` hook + modular `FileUploadField`, `ZipUploadField`, and `CoverUploadField`.
 
 ### Short Tech Notes (Implemented)
 
@@ -26,6 +43,14 @@
 - Deletion behavior: Better Auth `deleteUser` enabled; deletion route follows Better Auth fresh-session protection.
 - Stripe behavior: onboarding link creation + status sync updates `stripeVerified` from live Stripe account flags.
 - Env compatibility: prefer `X_CLIENT_ID/X_CLIENT_SECRET` with fallback to legacy typo vars (`TWITER_*`).
+- Template lifecycle model: draft-first with explicit status transitions (`draft` → `published` → `unpublished` / `deleted`).
+- Template upload policy is centralized: allowed MIME, max size, path validation, TTL, and per-asset store token are all shared in template blob helpers.
+- Upload security decision: Vercel client upload callbacks use raw request body (for signature verification), while still validating shape with Zod.
+- Pricing guardrail: paid pricing (`priceCents > 0`) requires seller Stripe verification, including when action is triggered by admin.
+- Description guardrail: markdown is normalized on write; `#` and `##` headings are auto-demoted to `###`.
+- Current gap snapshot:
+  - Read/list template APIs (`GET /api/templates`, `GET /api/templates/[slug]`) are still pending.
+  - Automated tests for lifecycle/blob flows are still pending.
 
 ---
 
@@ -123,13 +148,19 @@ Each template represents a published OpenClaw agent configuration. Track:
 - **Content:** full description (supports markdown), short description (for cards/listings)
 - **Pricing:** price in cents (0 = free), currency (default USD)
 - **Classification:** category (must match one of the `CATEGORIES` constants — see 4.6)
-- **Files:** S3 object key for the zip file, file size in bytes, optional cover image URL
+- **Files:** private blob pathname for current zip artifact, file size in bytes, optional public cover image URL
+- **Lifecycle:** `status` (`draft`, `published`, `unpublished`, `deleted`) + `publishedAt`, `unpublishedAt`, `deletedAt`
 - **Versioning:** current version string (semver, e.g. "1.0.0")
 - **Moderation:** flagged status (boolean), flag reason (set by admin)
 - **Stats:** download count
 - **Timestamps:** created, updated
 
-> Slug must be globally unique. Index on: seller, category, slug, flagged status, created date.
+> Slug must be globally unique and immutable after creation. Index on: seller, category, slug, status, flagged status, created date.
+
+Template versions are persisted in a separate `template_version` table:
+
+- `templateId`, `version`, `zipObjectKey`, `fileSizeBytes`, `createdByUserId`, timestamps
+- unique constraint on `(templateId, version)`
 
 ### 4.3 Purchases
 
@@ -237,39 +268,56 @@ export type CategorySlug = (typeof CATEGORIES)[number]["slug"];
 
 ### 5.1 Storage Strategy
 
-Use an S3-compatible bucket (AWS S3, Cloudflare R2, etc.) with the following structure:
+Use two Vercel Blob stores (token-separated):
 
+- `BLOB_READ_WRITE_TOKEN` for public assets (covers, public images)
+- `PRIVATE_READ_WRITE_TOKEN` for private template zip artifacts
+
+Blob path conventions:
+
+```text
+templates/public/covers/{sellerId}/{templateSlug}/{timestamp}-{random}-{filename}
+templates/private/zips/{sellerId}/{templateSlug}/v{semver}.zip
 ```
-claws-supply-bucket/
-├── templates/
-│   └── {sellerId}/{templateSlug}/
-│       ├── v1.0.0.zip
-│       ├── v1.1.0.zip        ← version updates stored separately
-│       └── cover.webp         ← optional cover image
-└── avatars/
-    └── {userId}.webp
-```
+
+Notes:
+
+- Cover uploads are public and cacheable.
+- Template zip uploads are private, versioned, and immutable (`allowOverwrite: false`).
 
 ### 5.2 Upload Flow
 
-1. Seller submits template form (title, description, category, price, zip file)
-2. Backend generates a **pre-signed upload URL** for the zip
-3. Client uploads directly to S3 via the pre-signed URL
-4. On success, backend saves the template record with the S3 key
-5. Cover image (if any) follows the same pre-signed URL pattern
+Upload uses Vercel **Client Upload** with separate handle routes:
+
+1. Client requests token via handle route:
+   - `POST /api/templates/[slug]/uploads/cover-handle`
+   - `POST /api/templates/[slug]/uploads/template-handle`
+2. Server validates session + owner/admin authorization + lifecycle state (not deleted).
+3. Server enforces pathname policy, MIME allowlist, max file size, and short token TTL.
+4. Client uploads directly to Blob (no server-byte proxy, lower infra cost).
+5. Publish/edit routes verify uploaded blobs with `head()` before persisting references.
 
 ### 5.3 Download Flow
 
-1. Buyer clicks "Download" on a purchased template (or free template)
-2. Backend verifies purchase (or price === 0)
-3. Backend generates a **pre-signed download URL** (short-lived, e.g., 5 minutes)
-4. Client redirects to the download URL
+Template downloads are server-mediated for security:
+
+1. Client calls `GET /api/templates/[slug]/download` (auth required).
+2. Backend verifies template is published and not deleted.
+3. Backend authorizes actor:
+   - seller/admin
+   - buyer with completed purchase
+   - authenticated user when template is free (`priceCents === 0`)
+4. Backend fetches private blob with server token and streams response with attachment headers.
+5. `downloadCount` increments only after blob fetch starts successfully.
+
+No shareable pre-signed blob download URL is returned to client.
 
 ### 5.4 Versioning
 
 - Sellers can upload a new version of an existing template
-- New zip is stored alongside the old one (keyed by version string)
-- The template record's `version` field is updated
+- New zip is stored as deterministic immutable pathname `v{version}.zip`
+- Semver must be monotonic (`newVersion > currentVersion`)
+- New row is inserted into `template_version`; template's current version pointer is updated
 - **All past buyers can download the latest version** — the purchase record grants access to any version
 
 ---
@@ -298,9 +346,10 @@ claws-supply-bucket/
    - transfer_data.destination = seller's stripe_account_id
 5. On successful payment (webhook: checkout.session.completed):
    a. Create purchase record
-   b. Increment template.download_count
 6. Buyer can now download the template
 ```
+
+`download_count` is incremented on successful download stream start (`GET /api/templates/[slug]/download`), not on checkout completion.
 
 ### 6.3 Commission Defaults
 
@@ -355,16 +404,34 @@ Better Auth handles these. Extend for X OAuth linking:
 
 ### 7.2 Template Routes
 
-| Method   | Route                              | Auth           | Description                                                                                                                                          |
-| -------- | ---------------------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET`    | `/api/templates`                   | ❌             | List templates. Query params: `category`, `sort` (newest, popular, price_asc, price_desc), `page`, `limit`, `search`                                 |
-| `GET`    | `/api/templates/[slug]`            | ❌             | Get single template by slug. Includes seller info, avg rating, review count.                                                                         |
-| `POST`   | `/api/templates`                   | ✅ Seller      | Create a new template. Body: `{ title, slug, description, shortDescription, category, priceCents, version }`. Returns pre-signed upload URL for zip. |
-| `PATCH`  | `/api/templates/[slug]`            | ✅ Owner       | Update template metadata (title, description, price, etc.)                                                                                           |
-| `POST`   | `/api/templates/[slug]/version`    | ✅ Owner       | Upload a new version. Body: `{ version }`. Returns pre-signed upload URL.                                                                            |
-| `DELETE` | `/api/templates/[slug]`            | ✅ Owner/Admin | Soft-delete (set is_flagged = true with reason)                                                                                                      |
-| `GET`    | `/api/templates/[slug]/download`   | ✅ Buyer/Free  | Generate pre-signed download URL. Verifies purchase or free status.                                                                                  |
-| `POST`   | `/api/templates/[slug]/upload-url` | ✅ Owner       | Generate pre-signed upload URL for cover image                                                                                                       |
+Template API conventions (implemented):
+
+- Success envelope: `{ data: ... }`
+- Error envelope: `{ error: { code, message } }`
+- Request validation: Zod schemas only
+- Mutations: session required + owner/admin authorization
+- Slug: immutable after creation
+
+| Method   | Route                                         | Auth                | Status      | Description                                                                                                                                                                  |
+| -------- | --------------------------------------------- | ------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`    | `/api/templates`                              | ❌                  | ⏳ Planned  | List templates. Query params: `category`, `sort` (newest, popular, price_asc, price_desc), `page`, `limit`, `search`.                                                     |
+| `GET`    | `/api/templates/[slug]`                       | ❌                  | ⏳ Planned  | Get single template by slug. Includes seller info, avg rating, review count.                                                                                                |
+| `POST`   | `/api/templates`                              | ✅ User             | ✅ Shipped  | Create draft template. Body: `{ title, slug, shortDescription, description, category, priceCents }`.                                                                       |
+| `PATCH`  | `/api/templates/[slug]`                       | ✅ Owner/Admin      | ✅ Shipped  | Edit mutable metadata only (slug immutable). Supports optional `coverUpload` blob reference.                                                                                |
+| `POST`   | `/api/templates/[slug]/publish`               | ✅ Owner/Admin      | ✅ Shipped  | Publish initial version. Body includes `{ version, zipUpload, coverUpload? }`.                                                                                              |
+| `POST`   | `/api/templates/[slug]/versions/publish`      | ✅ Owner/Admin      | ✅ Shipped  | Publish a new version on an already published template. Body includes `{ version, zipUpload }`.                                                                             |
+| `POST`   | `/api/templates/[slug]/unpublish`             | ✅ Owner/Admin      | ✅ Shipped  | Unpublish currently published template.                                                                                                                                      |
+| `DELETE` | `/api/templates/[slug]`                       | ✅ Owner/Admin      | ✅ Shipped  | Soft delete by setting lifecycle status to `deleted`.                                                                                                                        |
+| `POST`   | `/api/templates/[slug]/uploads/cover-handle`  | ✅ Owner/Admin\*    | ✅ Shipped  | Vercel Blob client-upload handle route for public cover images (`BLOB_READ_WRITE_TOKEN`).                                                                                   |
+| `POST`   | `/api/templates/[slug]/uploads/template-handle` | ✅ Owner/Admin\*  | ✅ Shipped  | Vercel Blob client-upload handle route for private template zips (`PRIVATE_READ_WRITE_TOKEN`), requires semver in client payload.                                          |
+| `GET`    | `/api/templates/[slug]/download`              | ✅ Authenticated    | ✅ Shipped  | Streams private zip from server. Access allowed for seller/admin, buyers with completed purchase, and authenticated users for free templates.                               |
+
+\* Upload-completed callback events are signed by Vercel Blob and validated by `handleUpload`; no session cookie is required for that callback event.
+
+Deprecated/removed routes:
+
+- `POST /api/templates/[slug]/upload-url` (removed)
+- `PUT /api/templates/uploads` (removed)
 
 ### 7.3 Purchase Routes
 
@@ -506,7 +573,7 @@ app/
 - **Auth required**
 - List of purchased templates with re-download button
 - If a newer version exists since purchase, show "New version available" badge
-- Download generates fresh pre-signed URL for the latest version
+- Download calls the secure stream endpoint (`GET /api/templates/[slug]/download`) for the latest version
 
 #### Dashboard — My Templates (`/dashboard/templates`)
 
@@ -590,7 +657,7 @@ For MVP, admin features are **API-only** (no admin UI). Admins use API calls or 
 
 | Event                              | Action                                                             |
 | ---------------------------------- | ------------------------------------------------------------------ |
-| `checkout.session.completed`       | Create purchase record, increment download_count                   |
+| `checkout.session.completed`       | Create purchase record                                             |
 | `account.updated`                  | Update seller's `stripe_verified` status, re-evaluate `isVerified` |
 | `account.application.deauthorized` | Clear seller's stripe fields, set `stripe_verified = false`        |
 
@@ -600,14 +667,18 @@ All webhooks verified via `stripe.webhooks.constructEvent()` with signing secret
 
 ## 12. Key Business Rules Summary
 
-1. **Templates auto-publish** on creation. No approval queue. Admins can flag to remove.
-2. **Referral attribution:** `?ref={username}` param → stored in cookie (30-day TTL) → read at checkout. Must match seller's username.
-3. **Commission resolution:** `commission_overrides[sellerId]` → if not found → `{ direct: 25, browsing: 50 }`.
-4. **Free templates** still create a purchase record (for review eligibility + re-download tracking).
-5. **Version updates** are available to all past buyers automatically.
-6. **Review eligibility:** must be verified user OR have purchased the template.
-7. **Slug uniqueness** enforced at database level. Slugs are URL-safe, lowercase, hyphenated.
-8. **Soft delete only** — flagged templates are hidden, not destroyed.
+1. **Draft-first lifecycle:** templates are created as `draft` and only become public after explicit publish.
+2. **Lifecycle states:** `draft`, `published`, `unpublished`, `deleted`; deleted templates cannot be edited/published/versioned.
+3. **Owner/admin authorization:** users can mutate only their own templates; admins can mutate any template.
+4. **Paid pricing gate:** `priceCents > 0` requires the template owner's Stripe account to be verified, even when mutation is triggered by admin.
+5. **Slug constraints:** globally unique, URL-safe lowercase hyphenated, and immutable after creation.
+6. **Description normalization:** markdown is allowed, but `#`/`##` headings are auto-demoted to `###` before persistence.
+7. **Blob separation:** covers are public (`BLOB_READ_WRITE_TOKEN`), template zip artifacts are private (`PRIVATE_READ_WRITE_TOKEN`).
+8. **Upload security:** path, MIME, and max-size are enforced server-side during client-token generation; zip uploads require semver-bound deterministic pathnames.
+9. **Download security:** all template downloads require authentication; access requires owner/admin, purchase, or free-template authenticated access.
+10. **Versioning:** each version is immutable and unique per template; new version must be semver-greater than current version.
+11. **Download tracking:** `download_count` increments only after private blob fetch begins successfully.
+12. **Soft delete:** deletion sets lifecycle status to `deleted`; data is retained.
 
 ---
 
@@ -630,12 +701,11 @@ STRIPE_SECRET_KEY=sk_...
 STRIPE_PUBLISHABLE_KEY=pk_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 
-# S3-compatible storage
-S3_BUCKET=claws-supply
-S3_REGION=...
-S3_ACCESS_KEY_ID=...
-S3_SECRET_ACCESS_KEY=...
-S3_ENDPOINT=...          # Optional, for R2/MinIO
+# Vercel Blob storage
+BLOB_READ_WRITE_TOKEN=...      # Public assets (covers/images)
+PRIVATE_READ_WRITE_TOKEN=...   # Private template zips
+# Optional when running upload callbacks in local/custom envs:
+# VERCEL_BLOB_CALLBACK_URL=https://claws.supply
 
 # App
 NEXT_PUBLIC_APP_URL=https://claws.supply

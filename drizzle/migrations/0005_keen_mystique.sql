@@ -1,0 +1,1 @@
+ALTER TABLE "template" ADD CONSTRAINT "template_published_fields_check" CHECK ("template"."status" <> 'published' OR ("template"."version" IS NOT NULL AND "template"."zip_object_key" IS NOT NULL AND "template"."file_size_bytes" IS NOT NULL));

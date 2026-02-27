@@ -21,6 +21,12 @@ export const purchaseStatusEnum = pgEnum("purchase_status", [
   "completed",
   "failed",
 ]);
+export const templateStatusEnum = pgEnum("template_status", [
+  "draft",
+  "published",
+  "unpublished",
+  "deleted",
+]);
 
 // Better Auth core tables
 export const user = pgTable(
@@ -105,10 +111,14 @@ export const template = pgTable(
     priceCents: integer("price_cents").notNull().default(0),
     currency: text("currency").notNull().default("USD"),
     category: text("category").notNull(),
-    zipObjectKey: text("zip_object_key").notNull(),
-    fileSizeBytes: integer("file_size_bytes").notNull(),
+    zipObjectKey: text("zip_object_key"),
+    fileSizeBytes: integer("file_size_bytes"),
     coverImageUrl: text("cover_image_url"),
-    version: text("version").notNull(),
+    version: text("version"),
+    status: templateStatusEnum("status").notNull().default("draft"),
+    publishedAt: timestamp("published_at"),
+    unpublishedAt: timestamp("unpublished_at"),
+    deletedAt: timestamp("deleted_at"),
     isFlagged: boolean("is_flagged").notNull().default(false),
     flagReason: text("flag_reason"),
     downloadCount: integer("download_count").notNull().default(0),
@@ -119,6 +129,7 @@ export const template = pgTable(
     slugUnique: uniqueIndex("template_slug_unique").on(table.slug),
     sellerIdx: index("template_seller_id_idx").on(table.sellerId),
     categoryIdx: index("template_category_idx").on(table.category),
+    statusIdx: index("template_status_idx").on(table.status),
     flaggedIdx: index("template_is_flagged_idx").on(table.isFlagged),
     createdAtIdx: index("template_created_at_idx").on(table.createdAt),
     priceCheck: check("template_price_cents_check", sql`${table.priceCents} >= 0`),
@@ -126,9 +137,42 @@ export const template = pgTable(
       "template_file_size_bytes_check",
       sql`${table.fileSizeBytes} >= 0`,
     ),
+    publishedFieldsCheck: check(
+      "template_published_fields_check",
+      sql`${table.status} <> 'published' OR (${table.version} IS NOT NULL AND ${table.zipObjectKey} IS NOT NULL AND ${table.fileSizeBytes} IS NOT NULL)`,
+    ),
     downloadCountCheck: check(
       "template_download_count_check",
       sql`${table.downloadCount} >= 0`,
+    ),
+  }),
+);
+
+export const templateVersion = pgTable(
+  "template_version",
+  {
+    id: text("id").primaryKey(),
+    templateId: text("template_id")
+      .notNull()
+      .references(() => template.id, { onDelete: "cascade" }),
+    version: text("version").notNull(),
+    zipObjectKey: text("zip_object_key").notNull(),
+    fileSizeBytes: integer("file_size_bytes").notNull(),
+    createdByUserId: text("created_by_user_id")
+      .notNull()
+      .references(() => user.id),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    templateVersionUnique: uniqueIndex("template_version_template_version_unique").on(
+      table.templateId,
+      table.version,
+    ),
+    templateIdx: index("template_version_template_id_idx").on(table.templateId),
+    createdAtIdx: index("template_version_created_at_idx").on(table.createdAt),
+    fileSizeCheck: check(
+      "template_version_file_size_bytes_check",
+      sql`${table.fileSizeBytes} >= 0`,
     ),
   }),
 );
