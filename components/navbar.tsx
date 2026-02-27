@@ -6,15 +6,22 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CossistantAvatarFallback } from "@/components/profile/cossistant-avatar-fallback";
 import { Button } from "@/components/ui/button";
-import { authClient } from "@/lib/auth-client";
 import { ProgressiveBlur } from "./progresive-blur";
 import { cn } from "@/lib/utils";
 
-export function Navbar() {
+type NavbarUser = {
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+} | null;
+
+type NavbarProps = {
+  user: NavbarUser;
+};
+
+export function Navbar({ user }: NavbarProps) {
   const [scrolled, setScrolled] = useState(false);
   const router = useRouter();
-  const session = authClient.useSession();
-  const user = session.data?.user;
   const isLoggedIn = Boolean(user);
   const accountHref = isLoggedIn ? "/profile" : "/auth/sign-in";
   const accountLabel = isLoggedIn ? "PROFILE" : "LOGIN";

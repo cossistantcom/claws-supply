@@ -43,6 +43,13 @@
       "when": 1772182906968,
       "tag": "0005_keen_mystique",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1772203821344,
+      "tag": "0006_dapper_queen_noir",
+      "breakpoints": true
     }
   ]
 }

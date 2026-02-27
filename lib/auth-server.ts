@@ -1,6 +1,6 @@
 import { stripe } from "@better-auth/stripe";
 import { eq } from "drizzle-orm";
-import { betterAuth } from "better-auth";
+import { betterAuth } from "better-auth/minimal";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { toNextJsHandler } from "better-auth/next-js";
 import { username } from "better-auth/plugins/username";
@@ -11,9 +11,31 @@ import { getStripeClient } from "./stripe";
 const USERNAME_MIN_LENGTH = 3;
 const USERNAME_MAX_LENGTH = 30;
 const USERNAME_FALLBACK = "user";
+const DEFAULT_DEV_AUTH_URL = "http://localhost:3039";
 const X_CLIENT_ID = process.env.X_CLIENT_ID ?? process.env.TWITER_CLIENT_ID;
 const X_CLIENT_SECRET =
   process.env.X_CLIENT_SECRET ?? process.env.TWITER_CLIENT_SECRET;
+
+function resolveAuthBaseURL(): string | undefined {
+  const configuredUrl =
+    process.env.BETTER_AUTH_URL ??
+    process.env.NEXT_PUBLIC_BETTER_AUTH_URL ??
+    process.env.PUBLIC_BETTER_AUTH_URL ??
+    process.env.NEXT_PUBLIC_APP_URL ??
+    process.env.NEXT_PUBLIC_SITE_URL ??
+    process.env.APP_URL ??
+    process.env.SITE_URL;
+
+  if (configuredUrl && configuredUrl.trim().length > 0) {
+    return configuredUrl.trim();
+  }
+
+  if (process.env.NODE_ENV !== "production") {
+    return DEFAULT_DEV_AUTH_URL;
+  }
+
+  return undefined;
+}
 
 function sanitizeUsername(input: string): string {
   const cleaned = input
@@ -76,11 +98,18 @@ async function ensureUniqueUsername(candidate: string): Promise<string> {
 
 function createAuth() {
   return betterAuth({
+    baseURL: resolveAuthBaseURL(),
     database: drizzleAdapter(db, {
       provider: "pg",
       schema,
     }),
     secret: process.env.BETTER_AUTH_SECRET,
+    session: {
+      cookieCache: {
+        enabled: true,
+        maxAge: 5 * 60,
+      },
+    },
     emailAndPassword: {
       enabled: true,
     },

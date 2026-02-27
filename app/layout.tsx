@@ -4,6 +4,7 @@ import { GeistPixelSquare } from "geist/font/pixel";
 import { Navbar } from "@/components/navbar";
 import { SiteFooter } from "@/components/site-footer";
 import { Toaster } from "@/components/ui/sonner";
+import { getSessionFromNextHeaders } from "@/lib/auth/session";
 import "./globals.css";
 import { MainProviders } from "./providers";
 
@@ -18,6 +19,15 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const session = await getSessionFromNextHeaders();
+  const navbarUser = session
+    ? {
+        name: session.user.name ?? null,
+        email: session.user.email ?? null,
+        image: session.user.image ?? null,
+      }
+    : null;
+
   return (
     <html
       lang="en"
@@ -25,7 +35,7 @@ export default async function RootLayout({
     >
       <body className="font-mono antialiased bg-background text-foreground min-h-screen">
         <MainProviders>
-          <Navbar />
+          <Navbar user={navbarUser} />
           {children}
           <SiteFooter />
           <Toaster />

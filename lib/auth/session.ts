@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import { cache } from "react";
 import { auth } from "@/lib/auth-server";
 
 export type AuthSession = NonNullable<
@@ -18,12 +19,16 @@ export async function getSessionFromRequest(request: Request) {
   });
 }
 
-export async function getSessionFromNextHeaders() {
+const getSessionFromNextHeadersCached = cache(async () => {
   const requestHeaders = await headers();
 
   return auth.api.getSession({
     headers: requestHeaders,
   });
+});
+
+export async function getSessionFromNextHeaders() {
+  return getSessionFromNextHeadersCached();
 }
 
 export async function requireSessionFromRequest(
@@ -47,4 +52,3 @@ export async function requireSessionFromNextHeaders(): Promise<AuthSession> {
 
   return session;
 }
-
