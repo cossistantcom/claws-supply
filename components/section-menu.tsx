@@ -1,6 +1,5 @@
 import { Button } from "@/components/ui/button";
 import { UploadTemplateMenuCta } from "@/components/upload-template-menu-cta";
-import { getSessionFromNextHeaders } from "@/lib/auth/session";
 import { getSectionMenuItems } from "@/lib/categories";
 import { categoryPath, discoveryPath } from "@/lib/routes";
 import { getTemplateCountsForMenuCached } from "@/lib/templates/read-service";
@@ -8,8 +7,6 @@ import Link from "next/link";
 
 export async function Menu() {
   const counts = await getTemplateCountsForMenuCached();
-  const session = await getSessionFromNextHeaders();
-  const isLoggedIn = Boolean(session);
 
   const sectionItems = getSectionMenuItems().map((item) =>
     item.type === "discovery"
@@ -31,7 +28,7 @@ export async function Menu() {
     <aside className="w-80 p-4 flex flex-col z-[9999]">
       <div className="flex-grow overflow-y-auto">
         <div className="space-y-4">
-          <UploadTemplateMenuCta isLoggedIn={isLoggedIn} />
+          <UploadTemplateMenuCta />
           <div className="space-y-2">
             {sectionItems.map((section) => (
               <Link href={section.href} key={section.key}>

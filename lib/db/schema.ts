@@ -127,6 +127,29 @@ export const verification = pgTable(
   }),
 );
 
+export const deviceCode = pgTable(
+  "device_code",
+  {
+    id: text("id").primaryKey(),
+    deviceCode: text("device_code").notNull(),
+    userCode: text("user_code").notNull(),
+    userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
+    expiresAt: timestamp("expires_at").notNull(),
+    status: text("status").notNull(),
+    lastPolledAt: timestamp("last_polled_at"),
+    pollingInterval: integer("polling_interval"),
+    clientId: text("client_id"),
+    scope: text("scope"),
+  },
+  (table) => ({
+    deviceCodeUnique: uniqueIndex("device_code_device_code_unique").on(table.deviceCode),
+    userCodeUnique: uniqueIndex("device_code_user_code_unique").on(table.userCode),
+    userIdIdx: index("device_code_user_id_idx").on(table.userId),
+    expiresAtIdx: index("device_code_expires_at_idx").on(table.expiresAt),
+    statusIdx: index("device_code_status_idx").on(table.status),
+  }),
+);
+
 // Marketplace tables
 export const template = pgTable(
   "template",
@@ -147,6 +170,8 @@ export const template = pgTable(
     coverImageUrl: text("cover_image_url"),
     version: integer("version"),
     versionNotes: text("version_notes"),
+    publisherHash: text("publisher_hash"),
+    archiveHash: text("archive_hash"),
     status: templateStatusEnum("status").notNull().default("draft"),
     publishedAt: timestamp("published_at"),
     unpublishedAt: timestamp("unpublished_at"),
@@ -172,6 +197,14 @@ export const template = pgTable(
     publishedFieldsCheck: check(
       "template_published_fields_check",
       sql`${table.status} <> 'published' OR (${table.version} IS NOT NULL AND ${table.zipObjectKey} IS NOT NULL AND ${table.fileSizeBytes} IS NOT NULL)`,
+    ),
+    publisherHashCheck: check(
+      "template_publisher_hash_check",
+      sql`${table.publisherHash} IS NULL OR ${table.publisherHash} ~ '^[a-f0-9]{64}$'`,
+    ),
+    archiveHashCheck: check(
+      "template_archive_hash_check",
+      sql`${table.archiveHash} IS NULL OR ${table.archiveHash} ~ '^[a-f0-9]{64}$'`,
     ),
     downloadCountCheck: check(
       "template_download_count_check",

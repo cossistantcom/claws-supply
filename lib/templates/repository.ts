@@ -18,6 +18,8 @@ export const templateRecordSelect = {
   coverImageUrl: template.coverImageUrl,
   version: template.version,
   versionNotes: template.versionNotes,
+  publisherHash: template.publisherHash,
+  archiveHash: template.archiveHash,
   status: template.status,
   publishedAt: template.publishedAt,
   unpublishedAt: template.unpublishedAt,
@@ -45,6 +47,8 @@ export type TemplateRecord = {
   coverImageUrl: string | null;
   version: number | null;
   versionNotes: string | null;
+  publisherHash: string | null;
+  archiveHash: string | null;
   status: "draft" | "published" | "unpublished" | "deleted";
   publishedAt: Date | null;
   unpublishedAt: Date | null;
@@ -72,6 +76,8 @@ export type TemplateDTO = {
   coverImageUrl: string | null;
   version: number | null;
   versionNotes: string | null;
+  publisherHash: string | null;
+  archiveHash: string | null;
   status: "draft" | "published" | "unpublished" | "deleted";
   publishedAt: string | null;
   unpublishedAt: string | null;
@@ -99,6 +105,8 @@ export function mapTemplateDTO(row: TemplateRecord): TemplateDTO {
     coverImageUrl: row.coverImageUrl,
     version: row.version,
     versionNotes: row.versionNotes,
+    publisherHash: row.publisherHash,
+    archiveHash: row.archiveHash,
     status: row.status,
     publishedAt: row.publishedAt ? row.publishedAt.toISOString() : null,
     unpublishedAt: row.unpublishedAt ? row.unpublishedAt.toISOString() : null,

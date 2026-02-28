@@ -1,24 +1,8 @@
-import { handleRouteError } from "@/lib/api/route-helpers";
-import { handleTemplateUploadRoute } from "@/lib/templates/upload-route";
+import { jsonError } from "@/lib/api/response";
 
-type RouteContext = {
-  params: Promise<{
-    slug: string;
-  }>;
-};
-
-export async function POST(request: Request, context: RouteContext) {
-  try {
-    return await handleTemplateUploadRoute({
-      request,
-      context,
-      assetType: "zip",
-    });
-  } catch (error) {
-    return handleRouteError(error, {
-      message: "Unable to create template upload token.",
-      code: "TEMPLATE_UPLOAD_TOKEN_ERROR",
-      status: 400,
-    });
-  }
+export async function POST() {
+  return jsonError("Template zip uploads are CLI-only.", {
+    code: "CLI_ONLY_ZIP_UPLOAD",
+    status: 410,
+  });
 }

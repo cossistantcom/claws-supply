@@ -1,7 +1,7 @@
 # claws-supply CLI — MVP Technical Requirements
 
 > **Purpose**: Spec for an AI coding agent to build the `claws-supply` NPX CLI.
-> **Scope**: Dead-simple MVP. Download and install OpenClaw templates from claws.supply.
+> **Scope**: Dead-simple MVP for template creators. Authenticate, build/sign, and publish draft templates to claws.supply.
 > **Philosophy**: If a non-technical user can't figure it out in 30 seconds, it's too complex.
 
 ---
@@ -10,19 +10,19 @@
 
 **Does:**
 
-- Let users browse and install OpenClaw templates from claws.supply
-- Verify that every template was actually published by who it claims (publisher signature)
-- Extract workspace files into a local directory, ready to use with OpenClaw
+- `npx claws-supply auth` — device authorization with browser approval and local token storage
+- `npx claws-supply build` — build and sign a local template artifact (`manifest.json` + hashes)
+- `npx claws-supply publish` — create a draft template for the authenticated user via `/api/cli/v1`
 
 **Doesn't (not in MVP):**
 
-- Export / create / publish templates (that's the web UI on claws.supply)
+- Download/install/use templates
 - Patch OpenClaw config files
 - Install plugins, hooks, or cron jobs
-- Manage purchases or auth tokens
+- Manage purchases
 - Anything with `.clawpkg` archives — templates are plain zips hosted on claws.supply
 
-The CLI is a **read-only consumer**. Publishing happens on the website.
+The CLI is the **only supported template creation path** in MVP.
 
 ---
 
@@ -185,47 +185,44 @@ That's it. No config patching, no permission engine, no security scanner. Those 
 
 ## 5. CLI Commands
 
-### 5.1 Install (default command)
+### 5.1 Auth
 
 ```bash
-# Interactive — browse and pick
-npx claws-supply
-
-# Direct — install by slug
-npx claws-supply reddit-marketing-starter
-
-# With options
-npx claws-supply reddit-marketing-starter --dir ./my-agent
-npx claws-supply reddit-marketing-starter --yes
+npx claws-supply auth
 ```
 
-**Flags:**
+- Starts device authorization via `/api/cli/v1/auth/device/code`
+- Opens `verification_uri_complete` in browser
+- Polls `/api/cli/v1/auth/device/token` until approved
+- Stores bearer token + publisher hash locally
 
-| Flag           | Short | Default    | Description                         |
-| -------------- | ----- | ---------- | ----------------------------------- |
-| `--dir <path>` | `-d`  | `./<slug>` | Where to extract files              |
-| `--yes`        | `-y`  | `false`    | Skip confirmation prompt            |
-| `--dry-run`    |       | `false`    | Show what would happen, don't write |
-| `--json`       |       | `false`    | Output JSON (for CI)                |
-| `--verbose`    | `-v`  | `false`    | Show detailed logs                  |
-
-### 5.2 Info
+### 5.2 Build
 
 ```bash
-npx claws-supply info reddit-marketing-starter
+npx claws-supply build
 ```
 
-Prints template metadata without installing. Useful for checking what you're about to install.
+- Prompts for title + slug
+- Verifies slug availability via `/api/cli/v1/templates/slug-availability`
+- Builds zip and manifest with per-file hashes + publisher hash
+- Produces signed archive metadata for publish step
 
-### 5.3 That's It
+### 5.3 Publish
 
-Two commands for MVP. No `export`, no `validate`, no `publish`. Keep it simple.
+```bash
+npx claws-supply publish
+```
+
+- Requests zip upload token from `/api/cli/v1/templates/uploads/zip-token`
+- Uploads deterministic private path `templates/private/zips/{userId}/{slug}/v1.zip`
+- Finalizes draft creation via `/api/cli/v1/templates/publish`
+- Prints the created template URL
 
 ---
 
-## 6. Install Flow (The Whole Thing)
+## 6. Legacy Install Flow (Deferred)
 
-This is the core of the CLI. Here's every step:
+This section is intentionally kept as a deferred reference for the future download/install phase. It is not part of the current creator-focused MVP.
 
 ```
 STEP 1 — RESOLVE TEMPLATE
@@ -405,12 +402,13 @@ const API_BASE = "https://claws.supply";
 
 ### 7.2 Endpoints Used by CLI
 
-| What                | Method | Endpoint                               | Auth | Notes                                          |
-| ------------------- | ------ | -------------------------------------- | ---- | ---------------------------------------------- |
-| List templates      | `GET`  | `/api/templates?sort=popular&limit=20` | No   | For interactive picker                         |
-| Search templates    | `GET`  | `/api/templates?search={q}`            | No   | For autocomplete filtering                     |
-| Get template detail | `GET`  | `/api/templates/{slug}`                | No   | Metadata + publisherHash + archiveHash         |
-| Download zip        | `GET`  | `/api/templates/{slug}/download`       | No\* | Streams the zip. \*Free templates only in MVP. |
+| What | Method | Endpoint | Auth | Notes |
+| ---- | ------ | -------- | ---- | ----- |
+| Start device auth | `POST` | `/api/cli/v1/auth/device/code` | No | Returns `device_code`, `user_code`, `verification_uri`, `interval`, `expires_in`. |
+| Poll device token | `POST` | `/api/cli/v1/auth/device/token` | No | Returns bearer token payload + `publisherHash` on success. |
+| Check slug | `GET` | `/api/cli/v1/templates/slug-availability?slug={slug}` | Bearer | Used by `build` to pre-check uniqueness (non-reserving). |
+| Zip upload token | `POST` | `/api/cli/v1/templates/uploads/zip-token` | Bearer | Returns constrained private Blob client token for deterministic `v1.zip` upload. |
+| Finalize publish | `POST` | `/api/cli/v1/templates/publish` | Bearer | Verifies signed archive and creates draft template. Returns draft + template URL. |
 
 ### 7.3 API Response Shapes (Zod)
 
@@ -790,15 +788,15 @@ Create `tests/fixtures/` with a small valid zip for integration tests.
 Implement in this sequence:
 
 1. **Scaffold** — package.json, tsconfig, tsup, directory structure
-2. **Zod schemas** — `manifest.ts` + `api.ts`
+2. **Zod schemas** — CLI auth + build/publish payload schemas
 3. **Hash utility** — `sha256File()` and `sha256String()` using `node:crypto`
-4. **API client** — fetch list + detail from claws.supply, validate with Zod
-5. **Download** — fetch zip to temp dir, verify archive hash
-6. **Verify** — extract manifest.json, check publisher hash + file hashes
-7. **Extract** — unzip verified files to target dir, write lock file
-8. **CLI wiring** — commander setup, `install` + `info` commands
+4. **Auth client** — device-code start + token polling flow
+5. **Build** — package local workspace zip + inject `manifest.json`
+6. **Upload** — request zip upload token and upload deterministic `v1.zip`
+7. **Publish finalize** — call `/api/cli/v1/templates/publish` and print resulting template URL
+8. **CLI wiring** — commander setup, `auth` + `build` + `publish` commands
 9. **UX polish** — header, spinners, colors, prompts, error formatting
-10. **Tests** — unit tests for verify, manifest, extract
+10. **Tests** — unit tests for auth polling, manifest generation, and publish finalize integration
 
 ---
 
@@ -806,12 +804,11 @@ Implement in this sequence:
 
 Explicitly deferred:
 
-- Auth in CLI (no login, no tokens, no paid template downloads)
-- Template publishing from CLI (stays on web)
+- Template download/install/use flows
 - Config patching (no `~/.openclaw/openclaw.json` writes)
 - Dependency installation (no plugin/skill installs)
 - Cron job handling
 - Security scanning of workspace content
 - Upgrade command (lock file written but never read)
-- Export command (no packaging local workspaces)
+- Export command beyond `build`/`publish` happy path
 - Paid template purchase flow

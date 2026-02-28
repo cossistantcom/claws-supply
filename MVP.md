@@ -17,10 +17,8 @@
   - `POST /api/profile/stripe/connect`
   - `GET /api/profile/stripe/status`
 - [x] DONE — Template lifecycle mutation API shipped with Zod validation and owner/admin authorization:
-  - `POST /api/templates` (create draft)
   - `PATCH /api/templates/[slug]` (edit metadata)
   - `POST /api/templates/[slug]/publish` (publish first version)
-  - `POST /api/templates/[slug]/versions/publish` (publish new version)
   - `POST /api/templates/[slug]/unpublish`
   - `DELETE /api/templates/[slug]` (soft delete via lifecycle status)
 - [x] DONE — Blob architecture migrated to dual-store Vercel Blob client upload:
@@ -38,9 +36,14 @@
   - `GET /api/templates/[slug]` returns public template detail (seller + aggregate stats + related templates)
   - Public discovery/category/detail pages now SSR-prefetch from shared read service (no `lib/mock/templates.ts` dependency)
   - `sitemap.xml` template URLs now source from published DB records
-- [x] DONE — Seller creation + lifecycle management UI shipped:
-  - Auth-gated creator page at `/dashboard/templates/new` (metadata-first draft flow, then cover+zip+notes upload)
-  - Owner/admin management panel on `/openclaw/template/[templateSlug]` with save/publish/unpublish/delete/version publish actions
+- [x] DONE — CLI-first template creation flow shipped:
+  - New protected API surface under `/api/cli/v1/*` for auth, slug checks, zip upload token issuance, and signed draft creation
+  - Better Auth device-authorization flow enabled with verification page at `/cli/auth/device`
+  - Template signing fields shipped on `template`: `publisher_hash` + `archive_hash`
+  - Zip/version upload from web endpoints is blocked (`410`) and template creation via `POST /api/templates` is removed
+- [x] DONE — Seller lifecycle management UI shipped:
+  - Owner/admin management panel on `/openclaw/template/[templateSlug]` with save/publish/unpublish/delete actions
+  - Template zip/version upload actions are CLI-only
   - Draft/unpublished templates return 404 for non-owner/non-admin viewers
 - [x] DONE — Versioning migrated to integer sequential model with release notes:
   - `template.version` and `template_version.version` are integers
@@ -67,6 +70,9 @@
 - Deletion behavior: Better Auth `deleteUser` enabled; deletion route follows Better Auth fresh-session protection.
 - Stripe behavior: onboarding link creation + status sync updates `stripeVerified` from live Stripe account flags.
 - Env compatibility: prefer `X_CLIENT_ID/X_CLIENT_SECRET` with fallback to legacy typo vars (`TWITER_*`).
+- CLI auth decision: device authorization uses Better Auth plugin with allowlisted client IDs from `CLI_DEVICE_CLIENT_IDS` (default: `claws-supply-cli`).
+- CLI transport decision: zip upload uses direct-to-Blob client tokens + finalize API (no large multipart body through Vercel route handlers).
+- CLI signing decision: finalize verifies archive hash, manifest schema, manifest publisher hash, and per-file hashes before draft insert.
 - Template lifecycle model: draft-first with explicit status transitions (`draft` → `published` → `unpublished` / `deleted`).
 - Template upload policy is centralized: allowed MIME, max size, path validation, TTL, and per-asset store token are all shared in template blob helpers.
 - Upload security decision: Vercel client upload callbacks use raw request body (for signature verification), while still validating shape with Zod.
@@ -452,14 +458,14 @@ Template API conventions (implemented):
 | -------- | --------------------------------------------- | ------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `GET`    | `/api/templates`                              | ❌                  | ✅ Shipped  | List published templates. Query params: `category`, `sort` (newest, popular, price_asc, price_desc), `page`, `limit`, `freeOnly`, `search` (backend-ready for phase 2 UI). |
 | `GET`    | `/api/templates/[slug]`                       | ❌                  | ✅ Shipped  | Get single public template by slug. Includes seller info, aggregate stats, and related templates.                                                                            |
-| `POST`   | `/api/templates`                              | ✅ User             | ✅ Shipped  | Create draft template. Body: `{ title, slug, shortDescription, description, category, priceCents }`.                                                                       |
-| `PATCH`  | `/api/templates/[slug]`                       | ✅ Owner/Admin      | ✅ Shipped  | Edit mutable metadata only (slug immutable). Supports `coverUpload`, and for draft/unpublished staging also `zipUpload + version + versionNotes`.                         |
-| `POST`   | `/api/templates/[slug]/publish`               | ✅ Owner/Admin      | ✅ Shipped  | Publish from staged draft assets, or inline payload with `{ version, zipUpload, coverUpload?, versionNotes? }`.                                                           |
-| `POST`   | `/api/templates/[slug]/versions/publish`      | ✅ Owner/Admin      | ✅ Shipped  | Publish a new version on an already published template. Body includes `{ version, zipUpload, versionNotes? }`.                                                           |
+| `POST`   | `/api/templates`                              | ✅ User             | ❌ Removed  | Removed. Template creation is now CLI-only via `/api/cli/v1/templates/publish`.                                                                                              |
+| `PATCH`  | `/api/templates/[slug]`                       | ✅ Owner/Admin      | ✅ Shipped  | Edit mutable metadata only (slug immutable). Supports metadata + `coverUpload` + `versionNotes` updates.                                                                   |
+| `POST`   | `/api/templates/[slug]/publish`               | ✅ Owner/Admin      | ✅ Shipped  | Publish existing draft artifact with optional `{ coverUpload?, versionNotes? }`.                                                                                            |
+| `POST`   | `/api/templates/[slug]/versions/publish`      | ✅ Owner/Admin      | ⚠️ Blocked  | Returns `410` (`CLI_ONLY_ZIP_VERSION_UPLOAD`). Zip/version artifact publishing is CLI-only.                                                                                 |
 | `POST`   | `/api/templates/[slug]/unpublish`             | ✅ Owner/Admin      | ✅ Shipped  | Unpublish currently published template.                                                                                                                                      |
 | `DELETE` | `/api/templates/[slug]`                       | ✅ Owner/Admin      | ✅ Shipped  | Soft delete by setting lifecycle status to `deleted`.                                                                                                                        |
 | `POST`   | `/api/templates/[slug]/uploads/cover-handle`  | ✅ Owner/Admin\*    | ✅ Shipped  | Vercel Blob client-upload handle route for public cover images (`BLOB_READ_WRITE_TOKEN`).                                                                                   |
-| `POST`   | `/api/templates/[slug]/uploads/template-handle` | ✅ Owner/Admin\*  | ✅ Shipped  | Vercel Blob client-upload handle route for private template zips (`PRIVATE_READ_WRITE_TOKEN`), requires integer `version` in client payload.                              |
+| `POST`   | `/api/templates/[slug]/uploads/template-handle` | ✅ Owner/Admin\*  | ⚠️ Blocked  | Returns `410` (`CLI_ONLY_ZIP_UPLOAD`). Zip artifact upload is CLI-only.                                                                                                     |
 | `GET`    | `/api/templates/[slug]/download`              | ✅ Authenticated    | ✅ Shipped  | Streams private zip from server. Access allowed for seller/admin, buyers with completed purchase, and authenticated users for free templates.                               |
 
 \* Upload-completed callback events are signed by Vercel Blob and validated by `handleUpload`; no session cookie is required for that callback event.
@@ -468,6 +474,19 @@ Deprecated/removed routes:
 
 - `POST /api/templates/[slug]/upload-url` (removed)
 - `PUT /api/templates/uploads` (removed)
+- `POST /api/templates` (removed; replaced by CLI publish finalize)
+
+### 7.2.1 CLI Routes (`/api/cli/v1`)
+
+| Method | Route | Auth | Status | Description |
+| ------ | ----- | ---- | ------ | ----------- |
+| `POST` | `/api/cli/v1/auth/device/code` | ❌ | ✅ Shipped | Starts Better Auth device flow and returns device/user code payload. |
+| `POST` | `/api/cli/v1/auth/device/token` | ❌ | ✅ Shipped | Polls device flow, returns bearer token payload and computed `publisherHash`. |
+| `POST` | `/api/cli/v1/auth/device/approve` | ✅ Session | ✅ Shipped | Browser approval endpoint for pending device codes. |
+| `POST` | `/api/cli/v1/auth/device/deny` | ✅ Session | ✅ Shipped | Browser deny endpoint for pending device codes. |
+| `GET` | `/api/cli/v1/templates/slug-availability` | ✅ Bearer | ✅ Shipped | Validates CLI slug availability before build/publish. |
+| `POST` | `/api/cli/v1/templates/uploads/zip-token` | ✅ Bearer | ✅ Shipped | Issues constrained private Blob client token for deterministic `v1.zip` uploads. |
+| `POST` | `/api/cli/v1/templates/publish` | ✅ Bearer | ✅ Shipped | Finalizes signed upload and creates draft with stored `publisher_hash` + `archive_hash`. |
 
 ### 7.3 Purchase Routes
 
@@ -534,8 +553,10 @@ app/
 │   └── page.tsx                                → /advertise                  (Advertising sales + campaign management)
 ├── openclaw/
 │   ├── templates/
-│   │   └── [category]/
-│   │       └── page.tsx                        → /openclaw/templates/{category}  (Category browse)
+│   │   ├── [category]/
+│   │   │   └── page.tsx                        → /openclaw/templates/{category}  (Category browse)
+│   │   └── publish-via-cli/
+│   │       └── page.tsx                        → /openclaw/templates/publish-via-cli  (CLI publishing guide)
 │   └── template/
 │       └── [templateSlug]/
 │           └── page.tsx                        → /openclaw/template/{slug}       (Template detail)
@@ -547,11 +568,13 @@ app/
 ├── dashboard/
 │   ├── page.tsx                                → /dashboard                     (My purchases)
 │   ├── templates/
-│   │   ├── page.tsx                            → /dashboard/templates           (My listed templates)
-│   │   └── new/
-│   │       └── page.tsx                        → /dashboard/templates/new       (Create template)
+│   │   └── page.tsx                            → /dashboard/templates           (My listed templates)
 │   └── settings/
 │       └── page.tsx                            → /dashboard/settings            (Profile, X link, Stripe)
+├── cli/
+│   └── auth/
+│       └── device/
+│           └── page.tsx                        → /cli/auth/device               (Device flow approval page)
 ├── auth/
 │   ├── sign-in/page.tsx                        → /auth/sign-in
 │   └── sign-up/page.tsx                        → /auth/sign-up
@@ -629,14 +652,13 @@ app/
 - List of seller's own templates with stats (downloads, revenue, rating)
 - Edit / upload new version actions
 
-#### Dashboard — Create Template (`/dashboard/templates/new`)
+#### CLI Publishing Guide (`/openclaw/templates/publish-via-cli`)
 
-- **Auth required, Seller only**
-- Two-step draft flow on one page:
-  1. Create draft metadata first: title, slug (auto-generated from title, editable), category, markdown description, short description, USD price (`priceCents` stored as integer)
-  2. Upload cover image + versioned zip + version notes, then save draft setup
-- Commission card is shown from shared constants (browsing 30%, direct 20%, 90-day referral window)
-- Slug uniqueness validated server-side on create
+- Public guide page for sellers with exact CLI commands:
+  - `npx claws-supply auth`
+  - `npx claws-supply build`
+  - `npx claws-supply publish`
+- This replaces the previous web create-template form flow.
 
 #### Dashboard — Settings (`/dashboard/settings`)
 
@@ -726,13 +748,16 @@ Webhook event IDs are persisted for idempotency in `stripe_webhook_event`.
 3. **Owner/admin authorization:** users can mutate only their own templates; admins can mutate any template.
 4. **Paid pricing gate:** `priceCents > 0` requires the template owner's Stripe account to be verified, even when mutation is triggered by admin.
 5. **Slug constraints:** globally unique, URL-safe lowercase hyphenated, and immutable after creation.
-6. **Description normalization:** markdown is allowed, but `#`/`##` headings are auto-demoted to `###` before persistence.
-7. **Blob separation:** covers are public (`BLOB_READ_WRITE_TOKEN`), template zip artifacts are private (`PRIVATE_READ_WRITE_TOKEN`).
-8. **Upload security:** path, MIME, and max-size are enforced server-side during client-token generation; zip uploads require integer-version deterministic pathnames.
-9. **Download security:** all template downloads require authentication; access requires owner/admin, purchase, or free-template authenticated access.
-10. **Versioning:** each version is immutable and unique per template; new version must increment by exactly `+1` (integer versioning).
-11. **Download tracking:** `download_count` increments only after private blob fetch begins successfully.
-12. **Soft delete:** deletion sets lifecycle status to `deleted`; data is retained.
+6. **CLI-only creation:** new templates are created only via `/api/cli/v1/templates/publish`; `POST /api/templates` is removed.
+7. **Web zip/version restrictions:** web zip/version endpoints return `410`; zip artifact upload/version publish happens via CLI flow.
+8. **Description normalization:** markdown is allowed, but `#`/`##` headings are auto-demoted to `###` before persistence.
+9. **Blob separation:** covers are public (`BLOB_READ_WRITE_TOKEN`), template zip artifacts are private (`PRIVATE_READ_WRITE_TOKEN`).
+10. **CLI upload security:** zip token issuance is protected by bearer auth + rate limits, with deterministic `v1.zip` path, MIME, and max-size constraints.
+11. **CLI signing verification:** finalize validates archive hash, manifest shape, publisher hash, and per-file hashes before DB insert.
+12. **Download security:** all template downloads require authentication; access requires owner/admin, purchase, or free-template authenticated access.
+13. **Versioning:** each version is immutable and unique per template; new version must increment by exactly `+1` (integer versioning).
+14. **Download tracking:** `download_count` increments only after private blob fetch begins successfully.
+15. **Soft delete:** deletion sets lifecycle status to `deleted`; data is retained.
 
 ### Known Hardening Gaps (Non-Blocking Follow-up)
 
@@ -751,6 +776,7 @@ DATABASE_URL=postgresql://...
 
 # Better Auth (already configured)
 BETTER_AUTH_SECRET=...
+CLI_DEVICE_CLIENT_IDS=claws-supply-cli
 
 # X / Twitter OAuth
 X_CLIENT_ID=...

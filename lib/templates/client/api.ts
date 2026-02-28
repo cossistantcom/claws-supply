@@ -33,6 +33,8 @@ export type TemplateMutationDTO = {
   coverImageUrl: string | null;
   version: number | null;
   versionNotes: string | null;
+  publisherHash: string | null;
+  archiveHash: string | null;
   status: TemplateStatus;
   publishedAt: string | null;
   unpublishedAt: string | null;
@@ -87,22 +89,12 @@ export type UpdateTemplatePayload = {
   priceCents?: number;
   currency?: "USD";
   coverUpload?: BlobUploadReferenceInput;
-  zipUpload?: BlobUploadReferenceInput;
-  version?: number;
   versionNotes?: string;
 };
 
 export type PublishTemplatePayload = {
-  version?: number;
-  zipUpload?: BlobUploadReferenceInput;
   versionNotes?: string;
   coverUpload?: BlobUploadReferenceInput;
-};
-
-export type PublishTemplateVersionPayload = {
-  version: number;
-  zipUpload: BlobUploadReferenceInput;
-  versionNotes?: string;
 };
 
 function resolveApiErrorMessage(
@@ -171,19 +163,6 @@ export function publishTemplate(
 ) {
   return requestJson<TemplatePublishResult>(
     `/api/templates/${encodeURIComponent(slug)}/publish`,
-    {
-      method: "POST",
-      body: JSON.stringify(input),
-    },
-  );
-}
-
-export function publishTemplateVersion(
-  slug: string,
-  input: PublishTemplateVersionPayload,
-) {
-  return requestJson<TemplatePublishResult>(
-    `/api/templates/${encodeURIComponent(slug)}/versions/publish`,
     {
       method: "POST",
       body: JSON.stringify(input),

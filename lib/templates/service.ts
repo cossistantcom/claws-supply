@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { and, desc, eq } from "drizzle-orm";
 import { isAdmin } from "@/lib/auth/permissions";
+import { CATEGORIES } from "@/lib/categories";
 import { db } from "@/lib/db";
 import { purchase, template, templateVersion, user } from "@/lib/db/schema";
 import { TemplateServiceError } from "./errors";
@@ -52,6 +53,11 @@ export type TemplateDownloadResult = {
   fileName: string;
   size: number | null;
 };
+
+const DEFAULT_CLI_TEMPLATE_SHORT_DESCRIPTION =
+  "Draft created via the claws-supply CLI. Update details before publishing.";
+const DEFAULT_CLI_TEMPLATE_DESCRIPTION =
+  "This draft was created via the claws-supply CLI publish flow. Add your full template description, category context, and pricing details before publishing.";
 
 function isUniqueViolation(error: unknown, constraintName: string): boolean {
   if (!error || typeof error !== "object") {
@@ -272,6 +278,67 @@ export async function createTemplateDraft(
   }
 }
 
+export async function createCliTemplateDraft(options: {
+  actor: Actor;
+  title: string;
+  slug: string;
+  zipObjectKey: string;
+  fileSizeBytes: number;
+  publisherHash: string;
+  archiveHash: string;
+}): Promise<TemplateDTO> {
+  const now = new Date();
+  const defaultCategory = CATEGORIES[0]?.slug ?? "marketing-seo";
+
+  try {
+    const [created] = await db
+      .insert(template)
+      .values({
+        id: randomUUID(),
+        sellerId: options.actor.id,
+        slug: options.slug,
+        title: options.title,
+        description: normalizeTemplateDescription(DEFAULT_CLI_TEMPLATE_DESCRIPTION),
+        shortDescription: DEFAULT_CLI_TEMPLATE_SHORT_DESCRIPTION,
+        priceCents: 0,
+        currency: "USD",
+        category: defaultCategory,
+        zipObjectKey: options.zipObjectKey,
+        fileSizeBytes: options.fileSizeBytes,
+        version: 1,
+        versionNotes:
+          "Initial artifact uploaded via the claws-supply CLI. Update release notes before publish.",
+        publisherHash: options.publisherHash,
+        archiveHash: options.archiveHash,
+        status: "draft",
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning({
+        id: template.id,
+      });
+
+    if (!created) {
+      throw new TemplateServiceError("Template could not be created.", {
+        code: "TEMPLATE_CREATE_FAILED",
+        status: 500,
+      });
+    }
+
+    const nextTemplate = await requireTemplateRecordById(created.id);
+    return mapTemplateDTO(nextTemplate);
+  } catch (error) {
+    if (isUniqueViolation(error, "template_slug_unique")) {
+      throw new TemplateServiceError("Template slug is already in use.", {
+        code: "SLUG_ALREADY_EXISTS",
+        status: 409,
+      });
+    }
+
+    throw error;
+  }
+}
+
 export async function updateTemplateMetadata(
   templateRow: TemplateRecord,
   input: UpdateTemplateInput,
@@ -282,26 +349,6 @@ export async function updateTemplateMetadata(
   assertPaidPriceAllowed(nextPriceCents, templateRow.sellerStripeVerified);
 
   const coverMetadata = await resolveCoverUploadMetadata(templateRow, input.coverUpload);
-  const nextVersion = input.version ?? templateRow.version;
-  const zipMetadata =
-    input.zipUpload && nextVersion
-      ? await resolveZipUploadMetadata(templateRow, input.zipUpload, nextVersion)
-      : null;
-
-  if (zipMetadata && templateRow.status === "published") {
-    throw new TemplateServiceError(
-      "Use the version publish route to upload a new zip for published templates.",
-      {
-        code: "LIFECYCLE_INVALID",
-        status: 400,
-      },
-    );
-  }
-
-  if (zipMetadata && nextVersion) {
-    assertSequentialVersion(nextVersion, templateRow.version);
-  }
-
   const now = new Date();
 
   const [updated] = await db
@@ -317,15 +364,10 @@ export async function updateTemplateMetadata(
       priceCents: nextPriceCents,
       currency: "USD",
       coverImageUrl: coverMetadata ? coverMetadata.url : templateRow.coverImageUrl,
-      zipObjectKey: zipMetadata ? zipMetadata.pathname : templateRow.zipObjectKey,
-      fileSizeBytes: zipMetadata ? zipMetadata.size : templateRow.fileSizeBytes,
-      version: nextVersion,
       versionNotes:
         input.versionNotes !== undefined
           ? input.versionNotes
-          : zipMetadata
-            ? null
-            : templateRow.versionNotes,
+          : templateRow.versionNotes,
       updatedAt: now,
     })
     .where(eq(template.id, templateRow.id))
@@ -363,26 +405,11 @@ export async function publishTemplate(
 
   assertPaidPriceAllowed(templateRow.priceCents, templateRow.sellerStripeVerified);
 
-  const inlineVersion = input.version;
-  const inlineZipUpload = input.zipUpload;
-  const hasInlineVersionUpload =
-    inlineVersion !== undefined && inlineZipUpload !== undefined;
-  if (hasInlineVersionUpload) {
-    assertSequentialVersion(inlineVersion, templateRow.version);
-  }
-
-  const zipMetadata = hasInlineVersionUpload
-    ? await resolveZipUploadMetadata(templateRow, inlineZipUpload, inlineVersion)
-    : null;
   const coverMetadata = await resolveCoverUploadMetadata(templateRow, input.coverUpload);
 
-  const nextVersion = hasInlineVersionUpload ? inlineVersion : templateRow.version;
-  const nextZipObjectKey = hasInlineVersionUpload
-    ? zipMetadata!.pathname
-    : templateRow.zipObjectKey;
-  const nextFileSizeBytes = hasInlineVersionUpload
-    ? zipMetadata!.size
-    : templateRow.fileSizeBytes;
+  const nextVersion = templateRow.version;
+  const nextZipObjectKey = templateRow.zipObjectKey;
+  const nextFileSizeBytes = templateRow.fileSizeBytes;
 
   if (nextVersion === null || !nextZipObjectKey || nextFileSizeBytes === null) {
     throw new TemplateServiceError(
@@ -397,9 +424,7 @@ export async function publishTemplate(
   const nextVersionNotes =
     input.versionNotes !== undefined
       ? input.versionNotes
-      : hasInlineVersionUpload
-        ? null
-        : templateRow.versionNotes;
+      : templateRow.versionNotes;
   const now = new Date();
 
   try {

@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { betterAuth } from "better-auth/minimal";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { toNextJsHandler } from "better-auth/next-js";
+import { deviceAuthorization } from "better-auth/plugins";
 import { username } from "better-auth/plugins/username";
 import { decodeJwt } from "jose";
 import { db } from "./db";
@@ -16,6 +17,7 @@ const DEFAULT_DEV_AUTH_URL = "http://localhost:3039";
 const X_CLIENT_ID = process.env.X_CLIENT_ID ?? process.env.TWITER_CLIENT_ID;
 const X_CLIENT_SECRET =
   process.env.X_CLIENT_SECRET ?? process.env.TWITER_CLIENT_SECRET;
+const DEFAULT_CLI_CLIENT_ID = "claws-supply-cli";
 
 function resolveAuthBaseURL(): string | undefined {
   const configuredUrl =
@@ -36,6 +38,24 @@ function resolveAuthBaseURL(): string | undefined {
   }
 
   return undefined;
+}
+
+function getAllowedCliClientIds(): string[] {
+  const raw = process.env.CLI_DEVICE_CLIENT_IDS;
+  if (!raw || raw.trim().length === 0) {
+    return [DEFAULT_CLI_CLIENT_ID];
+  }
+
+  const parsed = raw
+    .split(",")
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+
+  if (parsed.length === 0) {
+    return [DEFAULT_CLI_CLIENT_ID];
+  }
+
+  return parsed;
 }
 
 function sanitizeUsername(input: string): string {
@@ -252,6 +272,8 @@ async function fetchTwitterConfirmedEmail(accessToken: string): Promise<string |
 }
 
 function createAuth() {
+  const allowedCliClientIds = new Set(getAllowedCliClientIds());
+
   return betterAuth({
     baseURL: resolveAuthBaseURL(),
     database: drizzleAdapter(db, {
@@ -415,6 +437,12 @@ function createAuth() {
       },
     },
     plugins: [
+      deviceAuthorization({
+        verificationUri: "/cli/auth/device",
+        expiresIn: "30m",
+        interval: "5s",
+        validateClient: async (clientId) => allowedCliClientIds.has(clientId),
+      }),
       username({
         minUsernameLength: USERNAME_MIN_LENGTH,
         maxUsernameLength: USERNAME_MAX_LENGTH,

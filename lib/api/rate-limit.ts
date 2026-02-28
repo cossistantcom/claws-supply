@@ -5,14 +5,56 @@ import { Redis } from "@upstash/redis";
 import type { NextResponse } from "next/server";
 import { jsonError } from "./response";
 
-const PUBLIC_CLI_READ_BUCKET_PREFIX = "public-cli-read";
-const PUBLIC_CLI_READ_WINDOW = "1 m";
-const PUBLIC_CLI_READ_LIMIT = 60;
 const RATE_LIMITED_MESSAGE = "Too many requests. Please try again later.";
 
-let publicCliReadLimiter: Ratelimit | null = null;
+type RateLimitPolicy = {
+  prefix: string;
+  window: `${number} m`;
+  limit: number;
+};
+
+const RATE_LIMIT_POLICIES = {
+  publicCliRead: {
+    prefix: "public-cli-read",
+    window: "1 m",
+    limit: 60,
+  },
+  cliDeviceCodeByIp: {
+    prefix: "cli-device-code-ip",
+    window: "1 m",
+    limit: 20,
+  },
+  cliDeviceTokenByIp: {
+    prefix: "cli-device-token-ip",
+    window: "1 m",
+    limit: 120,
+  },
+  cliDeviceDecisionByUser: {
+    prefix: "cli-device-decision-user",
+    window: "1 m",
+    limit: 30,
+  },
+  cliSlugAvailabilityByUser: {
+    prefix: "cli-slug-availability-user",
+    window: "1 m",
+    limit: 60,
+  },
+  cliZipTokenByUser: {
+    prefix: "cli-zip-token-user",
+    window: "1 m",
+    limit: 30,
+  },
+  cliPublishByUser: {
+    prefix: "cli-publish-user",
+    window: "1 m",
+    limit: 15,
+  },
+} as const satisfies Record<string, RateLimitPolicy>;
+
+const limiterCache = new Map<string, Ratelimit>();
 let missingConfigLogged = false;
 let initializationErrorLogged = false;
+let cachedRedisClient: Redis | null = null;
 
 function getUpstashConfig() {
   const url = process.env.UPSTASH_REDIS_REST_URL?.trim();
@@ -35,9 +77,9 @@ function getUpstashConfig() {
   };
 }
 
-function getPublicCliReadLimiter(): Ratelimit | null {
-  if (publicCliReadLimiter) {
-    return publicCliReadLimiter;
+function getRedisClient(): Redis | null {
+  if (cachedRedisClient) {
+    return cachedRedisClient;
   }
 
   const config = getUpstashConfig();
@@ -46,13 +88,8 @@ function getPublicCliReadLimiter(): Ratelimit | null {
   }
 
   try {
-    const redis = new Redis(config);
-    publicCliReadLimiter = new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(PUBLIC_CLI_READ_LIMIT, PUBLIC_CLI_READ_WINDOW),
-      prefix: PUBLIC_CLI_READ_BUCKET_PREFIX,
-    });
-    return publicCliReadLimiter;
+    cachedRedisClient = new Redis(config);
+    return cachedRedisClient;
   } catch (error) {
     if (!initializationErrorLogged) {
       console.error(
@@ -81,6 +118,27 @@ function resolveClientIp(request: Request): string {
   }
 
   return "unknown";
+}
+
+function getRateLimiter(policy: RateLimitPolicy): Ratelimit | null {
+  const cached = limiterCache.get(policy.prefix);
+  if (cached) {
+    return cached;
+  }
+
+  const redis = getRedisClient();
+  if (!redis) {
+    return null;
+  }
+
+  const limiter = new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(policy.limit, policy.window),
+    prefix: policy.prefix,
+  });
+
+  limiterCache.set(policy.prefix, limiter);
+  return limiter;
 }
 
 function toNumber(value: unknown): number | null {
@@ -125,14 +183,20 @@ function setRateLimitHeaders(
 export async function enforcePublicCliReadRateLimit(
   request: Request,
 ): Promise<NextResponse | null> {
-  const limiter = getPublicCliReadLimiter();
+  const limiter = getRateLimiter(RATE_LIMIT_POLICIES.publicCliRead);
   if (!limiter) {
     return null;
   }
 
   const clientIp = resolveClientIp(request);
-  const bucketKey = clientIp;
+  return enforceRateLimit(request, limiter, clientIp);
+}
 
+async function enforceRateLimit(
+  request: Request,
+  limiter: Ratelimit,
+  bucketKey: string,
+): Promise<NextResponse | null> {
   try {
     const result = await limiter.limit(bucketKey);
 
@@ -153,4 +217,74 @@ export async function enforcePublicCliReadRateLimit(
     );
     return null;
   }
+}
+
+export async function enforceCliDeviceCodeRateLimit(
+  request: Request,
+): Promise<NextResponse | null> {
+  const limiter = getRateLimiter(RATE_LIMIT_POLICIES.cliDeviceCodeByIp);
+  if (!limiter) {
+    return null;
+  }
+
+  return enforceRateLimit(request, limiter, resolveClientIp(request));
+}
+
+export async function enforceCliDeviceTokenRateLimit(
+  request: Request,
+): Promise<NextResponse | null> {
+  const limiter = getRateLimiter(RATE_LIMIT_POLICIES.cliDeviceTokenByIp);
+  if (!limiter) {
+    return null;
+  }
+
+  return enforceRateLimit(request, limiter, resolveClientIp(request));
+}
+
+export async function enforceCliDeviceDecisionRateLimit(
+  request: Request,
+  userId: string,
+): Promise<NextResponse | null> {
+  const limiter = getRateLimiter(RATE_LIMIT_POLICIES.cliDeviceDecisionByUser);
+  if (!limiter) {
+    return null;
+  }
+
+  return enforceRateLimit(request, limiter, userId);
+}
+
+export async function enforceCliSlugAvailabilityRateLimit(
+  request: Request,
+  userId: string,
+): Promise<NextResponse | null> {
+  const limiter = getRateLimiter(RATE_LIMIT_POLICIES.cliSlugAvailabilityByUser);
+  if (!limiter) {
+    return null;
+  }
+
+  return enforceRateLimit(request, limiter, userId);
+}
+
+export async function enforceCliZipTokenRateLimit(
+  request: Request,
+  userId: string,
+): Promise<NextResponse | null> {
+  const limiter = getRateLimiter(RATE_LIMIT_POLICIES.cliZipTokenByUser);
+  if (!limiter) {
+    return null;
+  }
+
+  return enforceRateLimit(request, limiter, userId);
+}
+
+export async function enforceCliPublishRateLimit(
+  request: Request,
+  userId: string,
+): Promise<NextResponse | null> {
+  const limiter = getRateLimiter(RATE_LIMIT_POLICIES.cliPublishByUser);
+  if (!limiter) {
+    return null;
+  }
+
+  return enforceRateLimit(request, limiter, userId);
 }

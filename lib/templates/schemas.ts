@@ -96,31 +96,9 @@ export const updateTemplateSchema = z
     priceCents: priceSchema.optional(),
     currency: currencySchema,
     coverUpload: blobUploadReferenceSchema.optional(),
-    zipUpload: blobUploadReferenceSchema.optional(),
-    version: versionSchema.optional(),
     versionNotes: versionNotesSchema.optional(),
   })
   .strict()
-  .superRefine((payload, context) => {
-    const hasZipUpload = payload.zipUpload !== undefined;
-    const hasVersion = payload.version !== undefined;
-
-    if (hasZipUpload && !hasVersion) {
-      context.addIssue({
-        code: "custom",
-        message: "version is required when zipUpload is provided.",
-        path: ["version"],
-      });
-    }
-
-    if (hasVersion && !hasZipUpload) {
-      context.addIssue({
-        code: "custom",
-        message: "zipUpload is required when version is provided.",
-        path: ["zipUpload"],
-      });
-    }
-  })
   .refine(
     (payload) =>
       payload.title !== undefined ||
@@ -129,7 +107,6 @@ export const updateTemplateSchema = z
       payload.category !== undefined ||
       payload.priceCents !== undefined ||
       payload.coverUpload !== undefined ||
-      payload.zipUpload !== undefined ||
       payload.versionNotes !== undefined,
     {
       message: "At least one mutable field is required.",
@@ -138,32 +115,10 @@ export const updateTemplateSchema = z
 
 export const publishTemplateSchema = z
   .object({
-    version: versionSchema.optional(),
-    zipUpload: blobUploadReferenceSchema.optional(),
     versionNotes: versionNotesSchema.optional(),
     coverUpload: blobUploadReferenceSchema.optional(),
   })
-  .strict()
-  .superRefine((payload, context) => {
-    const hasZipUpload = payload.zipUpload !== undefined;
-    const hasVersion = payload.version !== undefined;
-
-    if (hasZipUpload && !hasVersion) {
-      context.addIssue({
-        code: "custom",
-        message: "version is required when zipUpload is provided.",
-        path: ["version"],
-      });
-    }
-
-    if (hasVersion && !hasZipUpload) {
-      context.addIssue({
-        code: "custom",
-        message: "zipUpload is required when version is provided.",
-        path: ["zipUpload"],
-      });
-    }
-  });
+  .strict();
 
 export const publishTemplateVersionSchema = z
   .object({

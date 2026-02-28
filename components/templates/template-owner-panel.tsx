@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Loader2Icon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -10,7 +10,6 @@ import {
   TemplateMetadataFields,
 } from "@/components/templates/template-metadata-fields";
 import { CoverUploadField } from "@/components/templates/cover-upload-field";
-import { ZipUploadField } from "@/components/templates/zip-upload-field";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -23,7 +22,6 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   deleteTemplate,
   publishTemplate,
-  publishTemplateVersion,
   unpublishTemplate,
   updateTemplate,
   type BlobUploadReferenceInput,
@@ -37,11 +35,6 @@ type TemplateOwnerPanelProps = {
   initialVersions: TemplateVersionDTO[];
   isAdmin: boolean;
 };
-
-type PendingZipUpload = {
-  version: number;
-  upload: BlobUploadReferenceInput;
-} | null;
 
 function resolveErrorMessage(error: unknown, fallback: string): string {
   if (error && typeof error === "object" && "message" in error) {
@@ -113,16 +106,10 @@ export function TemplateOwnerPanel({
   );
   const [pendingCoverUpload, setPendingCoverUpload] =
     useState<BlobUploadReferenceInput | null>(null);
-  const [pendingDraftZipUpload, setPendingDraftZipUpload] =
-    useState<PendingZipUpload>(null);
-  const [pendingPublishedZipUpload, setPendingPublishedZipUpload] =
-    useState<PendingZipUpload>(null);
-  const [nextVersionNotes, setNextVersionNotes] = useState("");
   const [isSavingEdits, setIsSavingEdits] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [isUnpublishing, setIsUnpublishing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isPublishingVersion, setIsPublishingVersion] = useState(false);
 
   useEffect(() => {
     setTemplate(initialTemplate);
@@ -135,7 +122,6 @@ export function TemplateOwnerPanel({
     );
   }, [initialTemplate, initialVersions]);
 
-  const nextVersion = useMemo(() => (template.version ?? 0) + 1, [template.version]);
   const canSaveEdits = template.status !== "deleted";
   const hasMetadataChanges =
     metadata.title !== template.title ||
@@ -152,18 +138,8 @@ export function TemplateOwnerPanel({
     const notes = currentVersionNotesDraft.trim();
     const shouldUpdateCurrentNotes =
       notes.length >= 3 && notes !== (template.versionNotes ?? "");
-    const shouldAttachDraftZip = template.status !== "published" && pendingDraftZipUpload;
-    if (shouldAttachDraftZip && notes.length < 3) {
-      toast.error("Version notes must be at least 3 characters.");
-      return;
-    }
 
-    if (
-      !hasMetadataChanges &&
-      !pendingCoverUpload &&
-      !pendingDraftZipUpload &&
-      !shouldUpdateCurrentNotes
-    ) {
+    if (!hasMetadataChanges && !pendingCoverUpload && !shouldUpdateCurrentNotes) {
       toast.message("No pending changes.");
       return;
     }
@@ -185,22 +161,13 @@ export function TemplateOwnerPanel({
           ? { priceCents: metadata.priceCents }
           : {}),
         ...(pendingCoverUpload ? { coverUpload: pendingCoverUpload } : {}),
-        ...(shouldAttachDraftZip
-          ? {
-              zipUpload: pendingDraftZipUpload.upload,
-              version: pendingDraftZipUpload.version,
-              versionNotes: notes,
-            }
-          : shouldUpdateCurrentNotes
-            ? { versionNotes: notes }
-            : {}),
+        ...(shouldUpdateCurrentNotes ? { versionNotes: notes } : {}),
       });
 
       setTemplate(updated);
       setMetadata(toMetadataValues(updated));
       setCurrentVersionNotesDraft(updated.versionNotes ?? notes);
       setPendingCoverUpload(null);
-      setPendingDraftZipUpload(null);
       toast.success("Template saved.");
       router.refresh();
     } catch (error) {
@@ -216,24 +183,13 @@ export function TemplateOwnerPanel({
     }
 
     const notes = currentVersionNotesDraft.trim();
-    if (pendingDraftZipUpload && notes.length < 3) {
-      toast.error("Version notes are required when publishing a zip.");
-      return;
-    }
-
     setIsPublishing(true);
     try {
       const published = await publishTemplate(template.slug, {
         ...(pendingCoverUpload ? { coverUpload: pendingCoverUpload } : {}),
-        ...(pendingDraftZipUpload
-          ? {
-              zipUpload: pendingDraftZipUpload.upload,
-              version: pendingDraftZipUpload.version,
-              versionNotes: notes,
-            }
-          : notes.length >= 3 && notes !== (template.versionNotes ?? "")
-            ? { versionNotes: notes }
-            : {}),
+        ...(notes.length >= 3 && notes !== (template.versionNotes ?? "")
+          ? { versionNotes: notes }
+          : {}),
       });
 
       setTemplate(published.template);
@@ -241,7 +197,6 @@ export function TemplateOwnerPanel({
       setCurrentVersionNotesDraft(published.template.versionNotes ?? notes);
       setVersions((current) => mergePublishedVersionHistory(current, published.version));
       setPendingCoverUpload(null);
-      setPendingDraftZipUpload(null);
       toast.success("Template published.");
       router.refresh();
     } catch (error) {
@@ -270,40 +225,6 @@ export function TemplateOwnerPanel({
       toast.error(resolveErrorMessage(error, "Unable to unpublish template."));
     } finally {
       setIsUnpublishing(false);
-    }
-  }
-
-  async function handlePublishVersion() {
-    if (template.status !== "published" || !pendingPublishedZipUpload) {
-      return;
-    }
-
-    const notes = nextVersionNotes.trim();
-    if (notes.length < 3) {
-      toast.error("Version notes must be at least 3 characters.");
-      return;
-    }
-
-    setIsPublishingVersion(true);
-    try {
-      const published = await publishTemplateVersion(template.slug, {
-        version: pendingPublishedZipUpload.version,
-        zipUpload: pendingPublishedZipUpload.upload,
-        versionNotes: notes,
-      });
-
-      setTemplate(published.template);
-      setMetadata(toMetadataValues(published.template));
-      setCurrentVersionNotesDraft(published.template.versionNotes ?? notes);
-      setVersions((current) => mergePublishedVersionHistory(current, published.version));
-      setPendingPublishedZipUpload(null);
-      setNextVersionNotes("");
-      toast.success(`Version ${published.version.version} published.`);
-      router.refresh();
-    } catch (error) {
-      toast.error(resolveErrorMessage(error, "Unable to publish new version."));
-    } finally {
-      setIsPublishingVersion(false);
     }
   }
 
@@ -423,93 +344,16 @@ export function TemplateOwnerPanel({
             }}
           />
 
-          {template.status === "published" ? (
-            <div className="space-y-4 border border-border p-4">
-              <div className="space-y-1">
-                <p className="text-xs uppercase tracking-wide">
-                  Publish Next Version (v{nextVersion})
-                </p>
-                <p className="text-[11px] text-muted-foreground">
-                  Upload a new zip and release note. Version must increment by exactly +1.
-                </p>
-              </div>
-              <ZipUploadField
-                templateSlug={template.slug}
-                sellerId={template.sellerId}
-                version={nextVersion}
-                disabled={!canSaveEdits}
-                onUploaded={(result) => {
-                  setPendingPublishedZipUpload({
-                    version: nextVersion,
-                    upload: {
-                      pathname: result.pathname,
-                      url: result.url,
-                      contentType: result.contentType,
-                      etag: result.etag,
-                    },
-                  });
-                }}
-              />
-              <div className="space-y-1">
-                <label
-                  htmlFor="template-next-version-notes"
-                  className="text-xs uppercase tracking-wide"
-                >
-                  What&apos;s New (v{nextVersion})
-                </label>
-                <Textarea
-                  id="template-next-version-notes"
-                  value={nextVersionNotes}
-                  onChange={(event) => setNextVersionNotes(event.target.value)}
-                  rows={3}
-                  maxLength={2_000}
-                />
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handlePublishVersion}
-                disabled={isPublishingVersion || !pendingPublishedZipUpload}
-              >
-                {isPublishingVersion ? (
-                  <>
-                    <Loader2Icon className="animate-spin" />
-                    Publishing Version...
-                  </>
-                ) : (
-                  `Publish Version ${nextVersion}`
-                )}
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-4 border border-border p-4">
-              <div className="space-y-1">
-                <p className="text-xs uppercase tracking-wide">
-                  Stage Draft Zip (v{nextVersion})
-                </p>
-                <p className="text-[11px] text-muted-foreground">
-                  Upload a zip for the next sequential version while draft/unpublished.
-                </p>
-              </div>
-              <ZipUploadField
-                templateSlug={template.slug}
-                sellerId={template.sellerId}
-                version={nextVersion}
-                disabled={!canSaveEdits}
-                onUploaded={(result) => {
-                  setPendingDraftZipUpload({
-                    version: nextVersion,
-                    upload: {
-                      pathname: result.pathname,
-                      url: result.url,
-                      contentType: result.contentType,
-                      etag: result.etag,
-                    },
-                  });
-                }}
-              />
-            </div>
-          )}
+          <div className="space-y-1 border border-border p-4 text-[11px] text-muted-foreground">
+            <p className="text-xs uppercase tracking-wide text-foreground">
+              Zip Version Uploads
+            </p>
+            <p>
+              Uploading new template zip versions is now CLI-only. Use{" "}
+              <code>npx claws-supply build</code> and{" "}
+              <code>npx claws-supply publish</code> from your local project.
+            </p>
+          </div>
 
           <div className="flex flex-wrap gap-2">
             <Button
