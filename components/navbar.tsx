@@ -70,6 +70,12 @@ export function Navbar({ user }: NavbarProps) {
             </Link>
           </div>
           <div className="flex items-center gap-4">
+            <Link
+              className="text-xs tracking-wider hover:opacity-80 transition-opacity"
+              href="/advertise"
+            >
+              ADVERTISE
+            </Link>
             {isLoggedIn ? (
               <Button
                 variant="ghost"
