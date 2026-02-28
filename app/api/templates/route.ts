@@ -1,4 +1,5 @@
 import { jsonSuccess } from "@/lib/api/response";
+import { enforcePublicCliReadRateLimit } from "@/lib/api/rate-limit";
 import { handleRouteError, requireSessionOrThrow } from "@/lib/api/route-helpers";
 import { parseJsonBodyWithSchema } from "@/lib/api/validation";
 import { parseTemplateListQueryFromRequest } from "@/lib/templates/read-schemas";
@@ -8,6 +9,11 @@ import { createTemplateDraft } from "@/lib/templates/service";
 
 export async function GET(request: Request) {
   try {
+    const rateLimitedResponse = await enforcePublicCliReadRateLimit(request);
+    if (rateLimitedResponse) {
+      return rateLimitedResponse;
+    }
+
     const query = parseTemplateListQueryFromRequest(request);
     const result = await listPublishedTemplates(query);
 

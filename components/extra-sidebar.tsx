@@ -12,7 +12,6 @@ export async function ExtraSidebar() {
     getAdAvailability(),
   ]);
   const shouldShowScarcity = availability.spotsLeft < 10;
-  const slots = Array.from({ length: SIDEBAR_SLOT_COUNT });
 
   return (
     <div className="flex w-80 flex-col gap-4 pr-4 text-xs">
@@ -25,15 +24,10 @@ export async function ExtraSidebar() {
           {availability.slotLimit})
         </Link>
       ) : null}
-      {slots.map((_, index) => {
-        const ad = ads[index];
-
-        if (ad) {
-          return <SidebarAdSlot key={ad.id} ad={ad} />;
-        }
-
-        return <SidebarEmptySlot key={`empty-${index}`} />;
-      })}
+      {ads.map((ad) => (
+        <SidebarAdSlot key={ad.id} ad={ad} />
+      ))}
+      {ads.length < SIDEBAR_SLOT_COUNT ? <SidebarEmptySlot key="empty-cta" /> : null}
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { jsonError, jsonSuccess } from "@/lib/api/response";
+import { enforcePublicCliReadRateLimit } from "@/lib/api/rate-limit";
 import {
   handleRouteError,
   parseSlugParams,
@@ -23,8 +24,13 @@ type RouteContext = {
   }>;
 };
 
-export async function GET(_request: Request, context: RouteContext) {
+export async function GET(request: Request, context: RouteContext) {
   try {
+    const rateLimitedResponse = await enforcePublicCliReadRateLimit(request);
+    if (rateLimitedResponse) {
+      return rateLimitedResponse;
+    }
+
     const slug = await parseSlugParams(context.params);
     const detail = await getPublishedTemplateBySlug(slug);
 

@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { Megaphone } from "lucide-react";
 import type { RenderableAd } from "@/lib/ads/types";
 
 type SidebarAdSlotProps = {
@@ -35,13 +36,25 @@ type SidebarEmptySlotProps = {
   href?: string;
 };
 
-export function SidebarEmptySlot({ href = "/advertise" }: SidebarEmptySlotProps) {
+export function SidebarEmptySlot({
+  href = "/advertise",
+}: SidebarEmptySlotProps) {
   return (
     <Link
       href={href}
-      className="bg-primary/5 border border-dashed border-border flex items-center justify-center w-full h-12 text-xs hover:border-cossistant-orange/40 transition-colors"
+      className="group flex min-h-20 w-full items-center gap-3 border border-dashed border-border bg-primary/5 px-3 py-3 text-xs transition-colors hover:border-cossistant-orange/40"
     >
-      advertise here
+      <span className="inline-flex size-8 items-center justify-center border border-border bg-background transition-colors group-hover:border-cossistant-orange/40">
+        <Megaphone className="size-4 text-cossistant-orange" />
+      </span>
+      <span className="leading-tight">
+        <span className="block text-sm uppercase tracking-wide">
+          Advertise here
+        </span>
+        <span className="block text-[11px] text-muted-foreground">
+          Get your brand in front of high-intent buyers.
+        </span>
+      </span>
     </Link>
   );
 }
