@@ -11,7 +11,7 @@ type UploadResult = NonNullable<BlobUploadHook["result"]>;
 type ZipUploadFieldProps = {
   templateSlug: string;
   sellerId: string;
-  version: string;
+  version: number;
   className?: string;
   disabled?: boolean;
   onUploaded?: (result: UploadResult) => void;

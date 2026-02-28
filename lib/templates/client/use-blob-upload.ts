@@ -26,7 +26,7 @@ type UseBlobUploadOptions = {
   templateSlug: string;
   sellerId: string;
   kind: UploadKind;
-  version?: string;
+  version?: number;
   validation?: UploadValidation;
 };
 

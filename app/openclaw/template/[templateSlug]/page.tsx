@@ -1,9 +1,20 @@
 import { OpenClawPageShell } from "@/components/openclaw-page-shell";
 import { TemplateCard } from "@/components/template-card";
+import { TemplateOwnerPanel } from "@/components/templates/template-owner-panel";
+import { isAdmin } from "@/lib/auth/permissions";
+import { getSessionFromNextHeaders } from "@/lib/auth/session";
 import { getCategoryBySlug } from "@/lib/categories";
 import { categoryPath, discoveryPath, templatePath } from "@/lib/routes";
 import { buildSeoMetadata } from "@/lib/seo";
-import { getPublishedTemplateBySlugCached } from "@/lib/templates/read-service";
+import {
+  getTemplateRecordBySlug,
+  mapTemplateDTO,
+} from "@/lib/templates/repository";
+import {
+  getTemplateDetailBySlugIncludingUnpublished,
+  getPublishedTemplateBySlugCached,
+} from "@/lib/templates/read-service";
+import { listTemplateVersions } from "@/lib/templates/service";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -26,7 +37,7 @@ function formatPrice(priceCents: number, currency: string) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency,
-    maximumFractionDigits: 0,
+    maximumFractionDigits: 2,
   }).format(priceCents / 100);
 }
 
@@ -54,7 +65,31 @@ export async function generateMetadata({
 
 export default async function TemplateDetailPage({ params }: TemplatePageProps) {
   const { templateSlug } = await params;
-  const detail = await getPublishedTemplateBySlugCached(templateSlug);
+  const [session, templateRow] = await Promise.all([
+    getSessionFromNextHeaders(),
+    getTemplateRecordBySlug(templateSlug),
+  ]);
+
+  if (!templateRow || templateRow.status === "deleted") {
+    notFound();
+  }
+
+  const canManageTemplate = Boolean(
+    session &&
+      (session.user.id === templateRow.sellerId || isAdmin(session.user)),
+  );
+
+  if (templateRow.status !== "published" && !canManageTemplate) {
+    notFound();
+  }
+
+  let detail = templateRow.status === "published"
+    ? await getPublishedTemplateBySlugCached(templateSlug)
+    : null;
+
+  if (!detail && canManageTemplate) {
+    detail = await getTemplateDetailBySlugIncludingUnpublished(templateSlug);
+  }
 
   if (!detail) {
     notFound();
@@ -62,6 +97,9 @@ export default async function TemplateDetailPage({ params }: TemplatePageProps) 
 
   const category = getCategoryBySlug(detail.template.category);
   const relatedTemplates = detail.relatedTemplates;
+  const versions = canManageTemplate
+    ? await listTemplateVersions(templateRow.id)
+    : [];
 
   return (
     <OpenClawPageShell>
@@ -86,6 +124,17 @@ export default async function TemplateDetailPage({ params }: TemplatePageProps) 
         <p className="text-sm text-muted-foreground max-w-2xl">
           {detail.template.description}
         </p>
+        {detail.template.versionNotes ? (
+          <div className="border border-border p-3 text-xs bg-muted/20">
+            <p className="uppercase tracking-wide text-muted-foreground">
+              What&apos;s New
+            </p>
+            <p className="mt-1">
+              {detail.template.version ? `v${detail.template.version}: ` : ""}
+              {detail.template.versionNotes}
+            </p>
+          </div>
+        ) : null}
 
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4 text-xs">
           <div className="border border-border p-3">
@@ -111,6 +160,11 @@ export default async function TemplateDetailPage({ params }: TemplatePageProps) 
         </div>
 
         <div className="flex flex-wrap items-center gap-4 text-xs">
+          {canManageTemplate ? (
+            <span className="border border-border px-2 py-1">
+              Status: {templateRow.status}
+            </span>
+          ) : null}
           {category ? (
             <Link className="hover:underline" href={categoryPath(category.slug)}>
               Browse {category.label}
@@ -137,6 +191,16 @@ export default async function TemplateDetailPage({ params }: TemplatePageProps) 
           </p>
         </div>
       </section>
+
+      {canManageTemplate ? (
+        <section className="space-y-4">
+          <TemplateOwnerPanel
+            initialTemplate={mapTemplateDTO(templateRow)}
+            initialVersions={versions}
+            isAdmin={Boolean(session && isAdmin(session.user))}
+          />
+        </section>
+      ) : null}
 
       {relatedTemplates.length > 0 ? (
         <section className="space-y-4">

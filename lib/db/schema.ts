@@ -132,7 +132,8 @@ export const template = pgTable(
     zipObjectKey: text("zip_object_key"),
     fileSizeBytes: integer("file_size_bytes"),
     coverImageUrl: text("cover_image_url"),
-    version: text("version"),
+    version: integer("version"),
+    versionNotes: text("version_notes"),
     status: templateStatusEnum("status").notNull().default("draft"),
     publishedAt: timestamp("published_at"),
     unpublishedAt: timestamp("unpublished_at"),
@@ -173,9 +174,10 @@ export const templateVersion = pgTable(
     templateId: text("template_id")
       .notNull()
       .references(() => template.id, { onDelete: "cascade" }),
-    version: text("version").notNull(),
+    version: integer("version").notNull(),
     zipObjectKey: text("zip_object_key").notNull(),
     fileSizeBytes: integer("file_size_bytes").notNull(),
+    releaseNotes: text("release_notes"),
     createdByUserId: text("created_by_user_id")
       .notNull()
       .references(() => user.id),

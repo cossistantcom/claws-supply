@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { isAdmin } from "@/lib/auth/permissions";
 import { db } from "@/lib/db";
 import { purchase, template, templateVersion, user } from "@/lib/db/schema";
@@ -10,9 +10,8 @@ import {
   requireTemplateRecordById,
   requireTemplateRecordBySlug,
   type TemplateDTO,
-  type TemplateRecord,
+    type TemplateRecord,
 } from "./repository";
-import { isSemverGreater } from "./semver";
 import type {
   BlobUploadReferenceInput,
   CreateTemplateInput,
@@ -34,9 +33,10 @@ export type Actor = {
 type TemplateVersionDTO = {
   id: string;
   templateId: string;
-  version: string;
+  version: number;
   zipObjectKey: string;
   fileSizeBytes: number;
+  releaseNotes: string | null;
   createdByUserId: string;
   createdAt: string;
 };
@@ -111,9 +111,10 @@ function assertPaidPriceAllowed(priceCents: number, sellerStripeVerified: boolea
 function mapTemplateVersionDTO(row: {
   id: string;
   templateId: string;
-  version: string;
+  version: number;
   zipObjectKey: string;
   fileSizeBytes: number;
+  releaseNotes: string | null;
   createdByUserId: string;
   createdAt: Date;
 }): TemplateVersionDTO {
@@ -123,14 +124,15 @@ function mapTemplateVersionDTO(row: {
     version: row.version,
     zipObjectKey: row.zipObjectKey,
     fileSizeBytes: row.fileSizeBytes,
+    releaseNotes: row.releaseNotes,
     createdByUserId: row.createdByUserId,
     createdAt: row.createdAt.toISOString(),
   };
 }
 
-function assertVersionIncrement(
-  nextVersion: string,
-  currentVersion: string | null,
+function assertSequentialVersion(
+  nextVersion: number,
+  currentVersion: number | null,
   options?: { requireCurrent?: boolean },
 ) {
   if (options?.requireCurrent && !currentVersion) {
@@ -140,9 +142,20 @@ function assertVersionIncrement(
     });
   }
 
-  if (currentVersion && !isSemverGreater(nextVersion, currentVersion)) {
+  if (currentVersion === null) {
+    if (nextVersion !== 1) {
+      throw new TemplateServiceError("Initial template version must be 1.", {
+        code: "VERSION_INVALID",
+        status: 400,
+      });
+    }
+
+    return;
+  }
+
+  if (nextVersion !== currentVersion + 1) {
     throw new TemplateServiceError(
-      "Version must be greater than the current template version.",
+      "Version must increment by exactly 1 from the current template version.",
       {
         code: "VERSION_INVALID",
         status: 400,
@@ -172,7 +185,7 @@ async function resolveCoverUploadMetadata(
 async function resolveZipUploadMetadata(
   templateRow: TemplateRecord,
   zipUpload: BlobUploadReferenceInput,
-  version: string,
+  version: number,
 ): Promise<BlobMetadata> {
   return verifyBlobExistsAndMetadata({
     assetType: "zip",
@@ -269,6 +282,26 @@ export async function updateTemplateMetadata(
   assertPaidPriceAllowed(nextPriceCents, templateRow.sellerStripeVerified);
 
   const coverMetadata = await resolveCoverUploadMetadata(templateRow, input.coverUpload);
+  const nextVersion = input.version ?? templateRow.version;
+  const zipMetadata =
+    input.zipUpload && nextVersion
+      ? await resolveZipUploadMetadata(templateRow, input.zipUpload, nextVersion)
+      : null;
+
+  if (zipMetadata && templateRow.status === "published") {
+    throw new TemplateServiceError(
+      "Use the version publish route to upload a new zip for published templates.",
+      {
+        code: "LIFECYCLE_INVALID",
+        status: 400,
+      },
+    );
+  }
+
+  if (zipMetadata && nextVersion) {
+    assertSequentialVersion(nextVersion, templateRow.version);
+  }
+
   const now = new Date();
 
   const [updated] = await db
@@ -284,6 +317,15 @@ export async function updateTemplateMetadata(
       priceCents: nextPriceCents,
       currency: "USD",
       coverImageUrl: coverMetadata ? coverMetadata.url : templateRow.coverImageUrl,
+      zipObjectKey: zipMetadata ? zipMetadata.pathname : templateRow.zipObjectKey,
+      fileSizeBytes: zipMetadata ? zipMetadata.size : templateRow.fileSizeBytes,
+      version: nextVersion,
+      versionNotes:
+        input.versionNotes !== undefined
+          ? input.versionNotes
+          : zipMetadata
+            ? null
+            : templateRow.versionNotes,
       updatedAt: now,
     })
     .where(eq(template.id, templateRow.id))
@@ -319,47 +361,109 @@ export async function publishTemplate(
     );
   }
 
-  assertVersionIncrement(input.version, templateRow.version);
   assertPaidPriceAllowed(templateRow.priceCents, templateRow.sellerStripeVerified);
 
-  const zipMetadata = await resolveZipUploadMetadata(
-    templateRow,
-    input.zipUpload,
-    input.version,
-  );
+  const inlineVersion = input.version;
+  const inlineZipUpload = input.zipUpload;
+  const hasInlineVersionUpload =
+    inlineVersion !== undefined && inlineZipUpload !== undefined;
+  if (hasInlineVersionUpload) {
+    assertSequentialVersion(inlineVersion, templateRow.version);
+  }
+
+  const zipMetadata = hasInlineVersionUpload
+    ? await resolveZipUploadMetadata(templateRow, inlineZipUpload, inlineVersion)
+    : null;
   const coverMetadata = await resolveCoverUploadMetadata(templateRow, input.coverUpload);
+
+  const nextVersion = hasInlineVersionUpload ? inlineVersion : templateRow.version;
+  const nextZipObjectKey = hasInlineVersionUpload
+    ? zipMetadata!.pathname
+    : templateRow.zipObjectKey;
+  const nextFileSizeBytes = hasInlineVersionUpload
+    ? zipMetadata!.size
+    : templateRow.fileSizeBytes;
+
+  if (nextVersion === null || !nextZipObjectKey || nextFileSizeBytes === null) {
+    throw new TemplateServiceError(
+      "Template must have an uploaded zip file before it can be published.",
+      {
+        code: "TEMPLATE_FILE_NOT_FOUND",
+        status: 400,
+      },
+    );
+  }
+
+  const nextVersionNotes =
+    input.versionNotes !== undefined
+      ? input.versionNotes
+      : hasInlineVersionUpload
+        ? null
+        : templateRow.versionNotes;
   const now = new Date();
 
   try {
     const result = await db.transaction(async (tx) => {
-      const [createdVersion] = await tx
-        .insert(templateVersion)
-        .values({
-          id: randomUUID(),
-          templateId: templateRow.id,
-          version: input.version,
-          zipObjectKey: zipMetadata.pathname,
-          fileSizeBytes: zipMetadata.size,
-          createdByUserId: actor.id,
-          createdAt: now,
-        })
-        .returning({
-          id: templateVersion.id,
-          templateId: templateVersion.templateId,
-          version: templateVersion.version,
-          zipObjectKey: templateVersion.zipObjectKey,
-          fileSizeBytes: templateVersion.fileSizeBytes,
-          createdByUserId: templateVersion.createdByUserId,
-          createdAt: templateVersion.createdAt,
-        });
+      const versionSelect = {
+        id: templateVersion.id,
+        templateId: templateVersion.templateId,
+        version: templateVersion.version,
+        zipObjectKey: templateVersion.zipObjectKey,
+        fileSizeBytes: templateVersion.fileSizeBytes,
+        releaseNotes: templateVersion.releaseNotes,
+        createdByUserId: templateVersion.createdByUserId,
+        createdAt: templateVersion.createdAt,
+      } as const;
+
+      const [existingVersion] = await tx
+        .select(versionSelect)
+        .from(templateVersion)
+        .where(
+          and(
+            eq(templateVersion.templateId, templateRow.id),
+            eq(templateVersion.version, nextVersion),
+          ),
+        )
+        .limit(1);
+
+      let persistedVersion = existingVersion;
+
+      if (!persistedVersion) {
+        const [createdVersion] = await tx
+          .insert(templateVersion)
+          .values({
+            id: randomUUID(),
+            templateId: templateRow.id,
+            version: nextVersion,
+            zipObjectKey: nextZipObjectKey,
+            fileSizeBytes: nextFileSizeBytes,
+            releaseNotes: nextVersionNotes,
+            createdByUserId: actor.id,
+            createdAt: now,
+          })
+          .returning(versionSelect);
+
+        persistedVersion = createdVersion ?? null;
+      } else if (input.versionNotes !== undefined) {
+        const [updatedVersion] = await tx
+          .update(templateVersion)
+          .set({
+            releaseNotes: input.versionNotes,
+          })
+          .where(eq(templateVersion.id, persistedVersion.id))
+          .returning(versionSelect);
+
+        persistedVersion = updatedVersion ?? persistedVersion;
+      }
 
       const [updatedTemplate] = await tx
         .update(template)
         .set({
           status: "published",
-          version: input.version,
-          zipObjectKey: zipMetadata.pathname,
-          fileSizeBytes: zipMetadata.size,
+          version: nextVersion,
+          zipObjectKey: nextZipObjectKey,
+          fileSizeBytes: nextFileSizeBytes,
+          versionNotes: nextVersionNotes,
           publishedAt: now,
           unpublishedAt: null,
           ...(coverMetadata ? { coverImageUrl: coverMetadata.url } : {}),
@@ -370,7 +474,7 @@ export async function publishTemplate(
           id: template.id,
         });
 
-      if (!createdVersion || !updatedTemplate) {
+      if (!persistedVersion || !updatedTemplate) {
         throw new TemplateServiceError("Unable to publish template.", {
           code: "TEMPLATE_PUBLISH_FAILED",
           status: 500,
@@ -378,7 +482,7 @@ export async function publishTemplate(
       }
 
       return {
-        createdVersion,
+        createdVersion: persistedVersion,
         updatedTemplateId: updatedTemplate.id,
       };
     });
@@ -417,7 +521,7 @@ export async function publishTemplateVersion(
     );
   }
 
-  assertVersionIncrement(input.version, templateRow.version, {
+  assertSequentialVersion(input.version, templateRow.version, {
     requireCurrent: true,
   });
 
@@ -438,6 +542,7 @@ export async function publishTemplateVersion(
           version: input.version,
           zipObjectKey: zipMetadata.pathname,
           fileSizeBytes: zipMetadata.size,
+          releaseNotes: input.versionNotes ?? null,
           createdByUserId: actor.id,
           createdAt: now,
         })
@@ -447,6 +552,7 @@ export async function publishTemplateVersion(
           version: templateVersion.version,
           zipObjectKey: templateVersion.zipObjectKey,
           fileSizeBytes: templateVersion.fileSizeBytes,
+          releaseNotes: templateVersion.releaseNotes,
           createdByUserId: templateVersion.createdByUserId,
           createdAt: templateVersion.createdAt,
         });
@@ -457,6 +563,7 @@ export async function publishTemplateVersion(
           version: input.version,
           zipObjectKey: zipMetadata.pathname,
           fileSizeBytes: zipMetadata.size,
+          versionNotes: input.versionNotes ?? null,
           updatedAt: now,
         })
         .where(eq(template.id, templateRow.id))
@@ -542,6 +649,25 @@ export async function softDeleteTemplate(templateRow: TemplateRecord): Promise<v
       updatedAt: now,
     })
     .where(eq(template.id, templateRow.id));
+}
+
+export async function listTemplateVersions(templateId: string): Promise<TemplateVersionDTO[]> {
+  const rows = await db
+    .select({
+      id: templateVersion.id,
+      templateId: templateVersion.templateId,
+      version: templateVersion.version,
+      zipObjectKey: templateVersion.zipObjectKey,
+      fileSizeBytes: templateVersion.fileSizeBytes,
+      releaseNotes: templateVersion.releaseNotes,
+      createdByUserId: templateVersion.createdByUserId,
+      createdAt: templateVersion.createdAt,
+    })
+    .from(templateVersion)
+    .where(eq(templateVersion.templateId, templateId))
+    .orderBy(desc(templateVersion.version), desc(templateVersion.createdAt));
+
+  return rows.map(mapTemplateVersionDTO);
 }
 
 async function canActorDownloadTemplate(actor: Actor, templateRow: TemplateRecord) {

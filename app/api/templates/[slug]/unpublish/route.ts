@@ -9,6 +9,7 @@ import {
   requireTemplateBySlug,
   unpublishTemplate,
 } from "@/lib/templates/service";
+import { revalidateTemplatePublicPaths } from "@/lib/templates/revalidate";
 
 type RouteContext = {
   params: Promise<{
@@ -25,6 +26,10 @@ export async function POST(request: Request, context: RouteContext) {
     assertCanManageTemplate(session.user, templateRow);
 
     const updated = await unpublishTemplate(templateRow);
+    revalidateTemplatePublicPaths({
+      slug: updated.slug,
+      category: updated.category,
+    });
 
     return jsonSuccess({
       status: updated.status,

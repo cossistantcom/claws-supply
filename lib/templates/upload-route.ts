@@ -32,7 +32,7 @@ type UploadRouteContext = {
   }>;
 };
 
-function requireZipVersionFromPayload(payload: UploadClientPayloadInput): string {
+function requireZipVersionFromPayload(payload: UploadClientPayloadInput): number {
   if (payload.kind !== "zip") {
     throw new TemplateServiceError("Template version is required.", {
       code: "VERSION_INVALID",

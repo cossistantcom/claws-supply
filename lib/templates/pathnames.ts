@@ -44,7 +44,7 @@ export function buildCoverPathname(options: {
 export function buildTemplateZipPathname(
   sellerId: string,
   templateSlug: string,
-  version: string,
+  version: number,
 ): string {
   return `templates/private/zips/${sellerId}/${templateSlug}/v${version}.zip`;
 }

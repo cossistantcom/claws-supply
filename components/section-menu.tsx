@@ -28,7 +28,7 @@ export async function Menu() {
   );
 
   return (
-    <aside className="w-64 p-4 flex flex-col z-[9999]">
+    <aside className="w-80 p-4 flex flex-col z-[9999]">
       <div className="flex-grow overflow-y-auto">
         <div className="space-y-4">
           <UploadTemplateMenuCta isLoggedIn={isLoggedIn} />

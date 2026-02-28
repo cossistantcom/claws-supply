@@ -50,6 +50,13 @@
       "when": 1772203821344,
       "tag": "0006_dapper_queen_noir",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1772252423289,
+      "tag": "0007_rich_namora",
+      "breakpoints": true
     }
   ]
 }

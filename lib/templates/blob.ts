@@ -124,7 +124,7 @@ export function assertTemplateZipPathname(
     sellerId: string;
     slug: string;
   },
-  version: string,
+  version: number,
 ) {
   const normalizedPathname = normalizeBlobPathname(pathname);
   assertPathnameValid(normalizedPathname);
@@ -164,7 +164,7 @@ export async function verifyBlobExistsAndMetadata(options: {
     sellerId: string;
     slug: string;
   };
-  version?: string;
+  version?: number;
 }): Promise<BlobMetadata> {
   const pathname = normalizeBlobPathname(options.pathname);
 

@@ -13,6 +13,7 @@ import {
   publishTemplateVersion,
   requireTemplateBySlug,
 } from "@/lib/templates/service";
+import { revalidateTemplatePublicPaths } from "@/lib/templates/revalidate";
 
 type RouteContext = {
   params: Promise<{
@@ -40,6 +41,10 @@ export async function POST(request: Request, context: RouteContext) {
       templateRow,
       input,
     );
+    revalidateTemplatePublicPaths({
+      slug: published.template.slug,
+      category: published.template.category,
+    });
 
     return jsonSuccess(published);
   } catch (error) {

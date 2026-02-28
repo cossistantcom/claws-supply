@@ -17,6 +17,7 @@ export const templateRecordSelect = {
   fileSizeBytes: template.fileSizeBytes,
   coverImageUrl: template.coverImageUrl,
   version: template.version,
+  versionNotes: template.versionNotes,
   status: template.status,
   publishedAt: template.publishedAt,
   unpublishedAt: template.unpublishedAt,
@@ -42,7 +43,8 @@ export type TemplateRecord = {
   zipObjectKey: string | null;
   fileSizeBytes: number | null;
   coverImageUrl: string | null;
-  version: string | null;
+  version: number | null;
+  versionNotes: string | null;
   status: "draft" | "published" | "unpublished" | "deleted";
   publishedAt: Date | null;
   unpublishedAt: Date | null;
@@ -68,7 +70,8 @@ export type TemplateDTO = {
   zipObjectKey: string | null;
   fileSizeBytes: number | null;
   coverImageUrl: string | null;
-  version: string | null;
+  version: number | null;
+  versionNotes: string | null;
   status: "draft" | "published" | "unpublished" | "deleted";
   publishedAt: string | null;
   unpublishedAt: string | null;
@@ -95,6 +98,7 @@ export function mapTemplateDTO(row: TemplateRecord): TemplateDTO {
     fileSizeBytes: row.fileSizeBytes,
     coverImageUrl: row.coverImageUrl,
     version: row.version,
+    versionNotes: row.versionNotes,
     status: row.status,
     publishedAt: row.publishedAt ? row.publishedAt.toISOString() : null,
     unpublishedAt: row.unpublishedAt ? row.unpublishedAt.toISOString() : null,

@@ -4,6 +4,7 @@ import { betterAuth } from "better-auth/minimal";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { toNextJsHandler } from "better-auth/next-js";
 import { username } from "better-auth/plugins/username";
+import { decodeJwt } from "jose";
 import { db } from "./db";
 import * as schema from "./db/schema";
 import { getStripeClient } from "./stripe";
@@ -96,6 +97,160 @@ async function ensureUniqueUsername(candidate: string): Promise<string> {
   return `${USERNAME_FALLBACK}_${Date.now().toString().slice(-6)}`;
 }
 
+type TwitterProfile = {
+  data?: {
+    id?: string;
+    username?: string;
+    name?: string;
+    email?: string;
+    profile_image_url?: string;
+  };
+};
+
+type TwitterIdTokenClaims = {
+  sub?: unknown;
+  name?: unknown;
+  email?: unknown;
+  email_verified?: unknown;
+  preferred_username?: unknown;
+  username?: unknown;
+  picture?: unknown;
+  profile_image_url?: unknown;
+};
+
+function asString(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function asBoolean(value: unknown): boolean | null {
+  if (typeof value !== "boolean") {
+    return null;
+  }
+
+  return value;
+}
+
+function mapTwitterProfileToUser(profile: TwitterProfile) {
+  const rawUsername = profile.data?.username?.toLowerCase();
+
+  return {
+    ...(rawUsername ? { username: rawUsername, xUsername: rawUsername } : {}),
+    ...(profile.data?.name
+      ? { displayUsername: profile.data.name }
+      : rawUsername
+        ? { displayUsername: rawUsername }
+        : {}),
+    ...(profile.data?.id ? { xAccountId: profile.data.id } : {}),
+    xLinkedAt: new Date(),
+  };
+}
+
+function parseTwitterIdToken(idToken: string) {
+  try {
+    const claims = decodeJwt(idToken) as TwitterIdTokenClaims;
+    const id = asString(claims.sub);
+
+    if (!id) {
+      return null;
+    }
+
+    const username =
+      asString(claims.preferred_username)?.toLowerCase() ??
+      asString(claims.username)?.toLowerCase();
+    const name = asString(claims.name) ?? username ?? id;
+    const email = asString(claims.email);
+    const emailVerified = asBoolean(claims.email_verified) ?? false;
+    const image = asString(claims.picture) ?? asString(claims.profile_image_url);
+
+    return {
+      id,
+      username,
+      name,
+      email,
+      emailVerified,
+      image,
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function fetchTwitterProfile(accessToken: string): Promise<TwitterProfile | null> {
+  const endpoints = [
+    "https://api.x.com/2/users/me?user.fields=profile_image_url",
+    "https://api.twitter.com/2/users/me?user.fields=profile_image_url",
+    "https://api.x.com/2/users/me",
+    "https://api.twitter.com/2/users/me",
+  ];
+
+  for (const endpoint of endpoints) {
+    try {
+      const response = await fetch(endpoint, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        continue;
+      }
+
+      const data = (await response.json()) as TwitterProfile;
+
+      if (typeof data?.data?.id === "string") {
+        return data;
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return null;
+}
+
+async function fetchTwitterConfirmedEmail(accessToken: string): Promise<string | null> {
+  const endpoints = [
+    "https://api.x.com/2/users/me?user.fields=confirmed_email",
+    "https://api.twitter.com/2/users/me?user.fields=confirmed_email",
+  ];
+
+  for (const endpoint of endpoints) {
+    try {
+      const response = await fetch(endpoint, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        continue;
+      }
+
+      const data = (await response.json()) as {
+        data?: {
+          confirmed_email?: string;
+        };
+      };
+      const confirmedEmail = data?.data?.confirmed_email;
+
+      if (typeof confirmedEmail === "string" && confirmedEmail.length > 0) {
+        return confirmedEmail;
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return null;
+}
+
 function createAuth() {
   return betterAuth({
     baseURL: resolveAuthBaseURL(),
@@ -116,6 +271,7 @@ function createAuth() {
     account: {
       accountLinking: {
         trustedProviders: ["twitter"],
+        allowDifferentEmails: true,
       },
     },
     socialProviders: {
@@ -123,25 +279,62 @@ function createAuth() {
         clientId: X_CLIENT_ID!,
         clientSecret: X_CLIENT_SECRET!,
         mapProfileToUser: (profile) => {
-          const xProfile = profile as {
-            data?: {
-              id?: string;
-              username?: string;
-              name?: string;
-            };
-          };
+          return mapTwitterProfileToUser(profile as TwitterProfile);
+        },
+        getUserInfo: async (token) => {
+          const idTokenData = token.idToken
+            ? parseTwitterIdToken(token.idToken)
+            : null;
+          const profile = token.accessToken
+            ? await fetchTwitterProfile(token.accessToken)
+            : null;
 
-          const rawUsername = xProfile.data?.username?.toLowerCase();
+          if (!profile?.data?.id && !idTokenData?.id) {
+            return null;
+          }
+
+          const confirmedEmail = token.accessToken
+            ? await fetchTwitterConfirmedEmail(token.accessToken)
+            : null;
+          const userId = profile?.data?.id ?? idTokenData?.id;
+          const username =
+            profile?.data?.username?.toLowerCase() ?? idTokenData?.username;
+          const name = profile?.data?.name ?? idTokenData?.name ?? username ?? userId;
+          const email =
+            confirmedEmail ??
+            profile?.data?.email ??
+            idTokenData?.email ??
+            username ??
+            `${userId}@x.local`;
+          const emailVerified =
+            Boolean(confirmedEmail) || Boolean(idTokenData?.emailVerified);
+          const image =
+            profile?.data?.profile_image_url ??
+            idTokenData?.image ??
+            undefined;
+          const userMap = profile
+            ? mapTwitterProfileToUser(profile)
+            : {
+                ...(username ? { username, xUsername: username } : {}),
+                ...(idTokenData?.name
+                  ? { displayUsername: idTokenData.name }
+                  : username
+                    ? { displayUsername: username }
+                    : {}),
+                ...(userId ? { xAccountId: userId } : {}),
+                xLinkedAt: new Date(),
+              };
 
           return {
-            ...(rawUsername ? { username: rawUsername, xUsername: rawUsername } : {}),
-            ...(xProfile.data?.name
-              ? { displayUsername: xProfile.data.name }
-              : rawUsername
-                ? { displayUsername: rawUsername }
-                : {}),
-            ...(xProfile.data?.id ? { xAccountId: xProfile.data.id } : {}),
-            xLinkedAt: new Date(),
+            user: {
+              id: userId!,
+              name,
+              email,
+              image,
+              emailVerified,
+              ...userMap,
+            },
+            data: profile ?? idTokenData ?? {},
           };
         },
       },

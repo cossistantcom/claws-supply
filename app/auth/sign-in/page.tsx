@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
@@ -21,11 +22,35 @@ function resolveErrorMessage(error: unknown): string {
   return "Unable to sign in right now.";
 }
 
+function resolveSafeRedirectPath(candidate: string | null): string {
+  if (!candidate) {
+    return CALLBACK_URL;
+  }
+
+  if (!candidate.startsWith("/") || candidate.startsWith("//")) {
+    return CALLBACK_URL;
+  }
+
+  return candidate;
+}
+
 export default function SignInPage() {
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const callbackURL = useMemo(
+    () => resolveSafeRedirectPath(searchParams.get("next")),
+    [searchParams],
+  );
+  const signUpHref = useMemo(() => {
+    if (callbackURL === CALLBACK_URL) {
+      return "/auth/sign-up";
+    }
+
+    return `/auth/sign-up?next=${encodeURIComponent(callbackURL)}`;
+  }, [callbackURL]);
 
   async function handleEmailSignIn(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -35,7 +60,7 @@ export default function SignInPage() {
     const { error } = await authClient.signIn.email({
       email,
       password,
-      callbackURL: CALLBACK_URL,
+      callbackURL,
     });
 
     if (error) {
@@ -53,7 +78,7 @@ export default function SignInPage() {
 
     const { error } = await authClient.signIn.social({
       provider: "twitter",
-      callbackURL: CALLBACK_URL,
+      callbackURL,
     });
 
     if (error) {
@@ -127,7 +152,7 @@ export default function SignInPage() {
 
       <p className="text-xs text-muted-foreground">
         New to Claws.supply?{" "}
-        <Link className="underline" href="/auth/sign-up">
+        <Link className="underline" href={signUpHref}>
           Create an account
         </Link>
       </p>

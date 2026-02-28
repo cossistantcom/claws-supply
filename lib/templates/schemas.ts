@@ -2,7 +2,17 @@ import { z } from "zod";
 import { isCategorySlug } from "@/lib/categories";
 
 export const slugRegex = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-export const semverRegex = /^\d+\.\d+\.\d+$/;
+
+const versionSchema = z
+  .number()
+  .int("version must be an integer.")
+  .min(1, "version must be at least 1.");
+
+const versionNotesSchema = z
+  .string()
+  .trim()
+  .min(3, "versionNotes must be at least 3 characters.")
+  .max(2_000, "versionNotes must be 2,000 characters or less.");
 
 export const slugParamSchema = z.object({
   slug: z
@@ -86,8 +96,31 @@ export const updateTemplateSchema = z
     priceCents: priceSchema.optional(),
     currency: currencySchema,
     coverUpload: blobUploadReferenceSchema.optional(),
+    zipUpload: blobUploadReferenceSchema.optional(),
+    version: versionSchema.optional(),
+    versionNotes: versionNotesSchema.optional(),
   })
   .strict()
+  .superRefine((payload, context) => {
+    const hasZipUpload = payload.zipUpload !== undefined;
+    const hasVersion = payload.version !== undefined;
+
+    if (hasZipUpload && !hasVersion) {
+      context.addIssue({
+        code: "custom",
+        message: "version is required when zipUpload is provided.",
+        path: ["version"],
+      });
+    }
+
+    if (hasVersion && !hasZipUpload) {
+      context.addIssue({
+        code: "custom",
+        message: "zipUpload is required when version is provided.",
+        path: ["zipUpload"],
+      });
+    }
+  })
   .refine(
     (payload) =>
       payload.title !== undefined ||
@@ -95,27 +128,50 @@ export const updateTemplateSchema = z
       payload.description !== undefined ||
       payload.category !== undefined ||
       payload.priceCents !== undefined ||
-      payload.coverUpload !== undefined,
+      payload.coverUpload !== undefined ||
+      payload.zipUpload !== undefined ||
+      payload.versionNotes !== undefined,
     {
       message: "At least one mutable field is required.",
     },
   );
 
-const publishBaseSchema = z
+export const publishTemplateSchema = z
   .object({
-    version: z
-      .string()
-      .trim()
-      .regex(semverRegex, "Version must be a semantic version (x.y.z)."),
+    version: versionSchema.optional(),
+    zipUpload: blobUploadReferenceSchema.optional(),
+    versionNotes: versionNotesSchema.optional(),
+    coverUpload: blobUploadReferenceSchema.optional(),
+  })
+  .strict()
+  .superRefine((payload, context) => {
+    const hasZipUpload = payload.zipUpload !== undefined;
+    const hasVersion = payload.version !== undefined;
+
+    if (hasZipUpload && !hasVersion) {
+      context.addIssue({
+        code: "custom",
+        message: "version is required when zipUpload is provided.",
+        path: ["version"],
+      });
+    }
+
+    if (hasVersion && !hasZipUpload) {
+      context.addIssue({
+        code: "custom",
+        message: "zipUpload is required when version is provided.",
+        path: ["zipUpload"],
+      });
+    }
+  });
+
+export const publishTemplateVersionSchema = z
+  .object({
+    version: versionSchema,
     zipUpload: blobUploadReferenceSchema,
+    versionNotes: versionNotesSchema.optional(),
   })
   .strict();
-
-export const publishTemplateSchema = publishBaseSchema.extend({
-  coverUpload: blobUploadReferenceSchema.optional(),
-});
-
-export const publishTemplateVersionSchema = publishBaseSchema;
 
 const uploadClientPayloadBaseSchema = z
   .object({
@@ -130,10 +186,7 @@ export const uploadClientPayloadSchema = z.discriminatedUnion("kind", [
   }),
   uploadClientPayloadBaseSchema.extend({
     kind: z.literal("zip"),
-    version: z
-      .string()
-      .trim()
-      .regex(semverRegex, "Version must be a semantic version (x.y.z)."),
+    version: versionSchema,
   }),
 ]);
 

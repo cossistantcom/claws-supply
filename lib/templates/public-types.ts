@@ -53,7 +53,8 @@ export type PublicTemplateDetailTemplate = {
   priceCents: number;
   currency: string;
   coverImageUrl: string | null;
-  version: string | null;
+  version: number | null;
+  versionNotes: string | null;
   fileSizeBytes: number | null;
   publishedAt: string | null;
   createdAt: string;

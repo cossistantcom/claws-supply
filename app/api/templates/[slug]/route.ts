@@ -14,6 +14,7 @@ import {
   softDeleteTemplate,
   updateTemplateMetadata,
 } from "@/lib/templates/service";
+import { revalidateTemplatePublicPaths } from "@/lib/templates/revalidate";
 import { getPublishedTemplateBySlug } from "@/lib/templates/read-service";
 
 type RouteContext = {
@@ -53,6 +54,11 @@ export async function PATCH(request: Request, context: RouteContext) {
 
     assertCanManageTemplate(session.user, templateRow);
     const updated = await updateTemplateMetadata(templateRow, input);
+    revalidateTemplatePublicPaths({
+      slug: updated.slug,
+      category: updated.category,
+      previousCategory: templateRow.category,
+    });
 
     return jsonSuccess(updated);
   } catch (error) {
@@ -72,6 +78,10 @@ export async function DELETE(request: Request, context: RouteContext) {
 
     assertCanManageTemplate(session.user, templateRow);
     await softDeleteTemplate(templateRow);
+    revalidateTemplatePublicPaths({
+      slug: templateRow.slug,
+      category: templateRow.category,
+    });
 
     return jsonSuccess({
       success: true,

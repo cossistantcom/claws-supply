@@ -41,7 +41,8 @@ type TemplateReadRow = {
   priceCents: number;
   currency: string;
   coverImageUrl: string | null;
-  version: string | null;
+  version: number | null;
+  versionNotes: string | null;
   fileSizeBytes: number | null;
   publishedAt: Date | null;
   downloadCount: number;
@@ -217,6 +218,7 @@ async function listTemplateRows(
       currency: template.currency,
       coverImageUrl: template.coverImageUrl,
       version: template.version,
+      versionNotes: template.versionNotes,
       fileSizeBytes: template.fileSizeBytes,
       publishedAt: template.publishedAt,
       downloadCount: template.downloadCount,
@@ -331,6 +333,59 @@ export async function getPublishedTemplateBySlug(
       currency: row.currency,
       coverImageUrl: row.coverImageUrl,
       version: row.version,
+      versionNotes: row.versionNotes,
+      fileSizeBytes: row.fileSizeBytes,
+      publishedAt: row.publishedAt ? row.publishedAt.toISOString() : null,
+      createdAt: row.createdAt.toISOString(),
+      updatedAt: row.updatedAt.toISOString(),
+    },
+    seller: mapSeller(row),
+    stats: {
+      downloadCount: row.downloadCount,
+      rating: toFiniteNumber(row.averageRating),
+      reviewCount: toNonNegativeInteger(row.reviewCount),
+    },
+    relatedTemplates,
+  };
+}
+
+export async function getTemplateDetailBySlugIncludingUnpublished(
+  slug: string,
+): Promise<PublicTemplateDetail | null> {
+  const whereClause = and(
+    eq(template.slug, slug),
+    ne(template.status, "deleted"),
+    isNull(template.deletedAt),
+  )!;
+  const [row] = await listTemplateRows(whereClause, {
+    limit: 1,
+    sort: "newest",
+  });
+
+  if (!row) {
+    return null;
+  }
+
+  const category = mapCategory(row);
+  const relatedTemplates = await listRelatedPublishedTemplates({
+    templateId: row.id,
+    category,
+    limit: 6,
+  });
+
+  return {
+    template: {
+      id: row.id,
+      slug: row.slug,
+      title: row.title,
+      shortDescription: row.shortDescription,
+      description: row.description,
+      category,
+      priceCents: row.priceCents,
+      currency: row.currency,
+      coverImageUrl: row.coverImageUrl,
+      version: row.version,
+      versionNotes: row.versionNotes,
       fileSizeBytes: row.fileSizeBytes,
       publishedAt: row.publishedAt ? row.publishedAt.toISOString() : null,
       createdAt: row.createdAt.toISOString(),
