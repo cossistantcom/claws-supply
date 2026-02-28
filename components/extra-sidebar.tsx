@@ -1,21 +1,39 @@
-export function ExtraSidebar() {
+import Link from "next/link";
+import { SidebarAdSlot, SidebarEmptySlot } from "@/components/ads/sidebar-ad-slot";
+import { getAdAvailability, listRenderableSidebarAds } from "@/lib/ads/read-service";
+
+const SIDEBAR_SLOT_COUNT = 5;
+
+export async function ExtraSidebar() {
+  const [ads, availability] = await Promise.all([
+    listRenderableSidebarAds({
+      limit: SIDEBAR_SLOT_COUNT,
+    }),
+    getAdAvailability(),
+  ]);
+  const shouldShowScarcity = availability.spotsLeft < 10;
+  const slots = Array.from({ length: SIDEBAR_SLOT_COUNT });
+
   return (
     <div className="flex w-80 flex-col gap-4 pr-4 text-xs">
-      <div className="bg-primary/5 flex items-center justify-center w-full h-12">
-        advertise here
-      </div>
-      <div className="bg-primary/5 flex items-center justify-center w-full h-12">
-        advertise here
-      </div>
-      <div className="bg-primary/5 flex items-center justify-center w-full h-12">
-        advertise here
-      </div>
-      <div className="bg-primary/5 flex items-center justify-center w-full h-12">
-        advertise here
-      </div>
-      <div className="bg-primary/5 flex items-center justify-center w-full h-12">
-        advertise here
-      </div>
+      {shouldShowScarcity ? (
+        <Link
+          href="/advertise"
+          className="border border-cossistant-orange/40 bg-cossistant-orange/10 px-3 py-2 text-[11px] tracking-wide text-cossistant-orange transition-colors hover:bg-cossistant-orange/15"
+        >
+          Only {availability.spotsLeft} ad spots left ({availability.spotsLeft}/
+          {availability.slotLimit})
+        </Link>
+      ) : null}
+      {slots.map((_, index) => {
+        const ad = ads[index];
+
+        if (ad) {
+          return <SidebarAdSlot key={ad.id} ad={ad} />;
+        }
+
+        return <SidebarEmptySlot key={`empty-${index}`} />;
+      })}
     </div>
   );
 }

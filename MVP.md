@@ -38,6 +38,25 @@
   - `GET /api/templates/[slug]` returns public template detail (seller + aggregate stats + related templates)
   - Public discovery/category/detail pages now SSR-prefetch from shared read service (no `lib/mock/templates.ts` dependency)
   - `sitemap.xml` template URLs now source from published DB records
+- [x] DONE — Seller creation + lifecycle management UI shipped:
+  - Auth-gated creator page at `/dashboard/templates/new` (metadata-first draft flow, then cover+zip+notes upload)
+  - Owner/admin management panel on `/openclaw/template/[templateSlug]` with save/publish/unpublish/delete/version publish actions
+  - Draft/unpublished templates return 404 for non-owner/non-admin viewers
+- [x] DONE — Versioning migrated to integer sequential model with release notes:
+  - `template.version` and `template_version.version` are integers
+  - New note fields: `template.version_notes` and `template_version.release_notes`
+  - Zip uploads/version publish enforce sequential increments (`+1`)
+- [x] DONE — Commission defaults centralized and rendered in UI:
+  - Browsing sales: 30% platform commission
+  - Direct-link sales: 20% platform commission
+  - Direct referral window: 90 days
+- [x] DONE — Advertising subscriptions v1 shipped:
+  - Public sales + authenticated campaign management page at `/advertise`
+  - Ad campaign schema + migration (`ad_campaign`, `stripe_webhook_event`, enums/indexes/constraints)
+  - Ads APIs shipped: `GET /api/ads/availability`, `GET/POST /api/ads/campaign`, `POST /api/ads/campaign/cancel`, `POST /api/ads/logo-handle`
+  - Stripe ads webhook lifecycle sync shipped at `POST /api/stripe/webhooks`
+  - Sponsored rendering shipped for sidebar and in-grid results cards
+  - Legal updates shipped for advertising subscriptions/moderation in terms + policy pages
 
 ### Short Tech Notes (Implemented)
 
@@ -53,6 +72,12 @@
 - Upload security decision: Vercel client upload callbacks use raw request body (for signature verification), while still validating shape with Zod.
 - Pricing guardrail: paid pricing (`priceCents > 0`) requires seller Stripe verification, including when action is triggered by admin.
 - Description guardrail: markdown is normalized on write; `#` and `##` headings are auto-demoted to `###`.
+- Versioning decision: template versioning uses sequential integer versions (`1, 2, 3, ...`) with per-version release notes.
+- Commission decision: default rates are direct `20%`, browsing `30%`, with a `90` day referral attribution window.
+- Ads constants decision: campaign inventory, placement pricing, and Stripe price-id source of truth are centralized in `lib/ads/constants.ts`.
+- Ads lifecycle decision: renderability, capacity reservation, and final subscription-state logic are centralized in `lib/ads/domain.ts`.
+- Ads read-path decision: availability reads, campaign reads, sidebar/results render queries, and sponsored feed insertion composition are centralized in `lib/ads/read-service.ts`.
+- Ads Stripe routing decision: sandbox vs production price IDs are resolved from the Stripe secret key environment and override env variables.
 - Read architecture decision: one shared template read service powers both SSR pages and API handlers; no server-side internal HTTP fetch layer.
 - Runtime DB decision: query/mutation paths use Drizzle query builder only (no raw `sql` fragments in runtime services/routes). Raw SQL remains limited to Drizzle schema constraints and migration files.
 - Download counter decision: increments use a Drizzle transaction with row lock (`FOR UPDATE`) and deterministic writeback.
@@ -76,7 +101,7 @@ Templates let users skip the configuration phase and instantly bootstrap a speci
 ### Core Value Proposition
 
 - **Buyers:** One-click quickstart with a pre-configured OpenClaw agent — no domain expertise required.
-- **Sellers:** Monetize agent configurations. Share via direct link (25% platform commission) or let the marketplace drive discovery (50% commission).
+- **Sellers:** Monetize agent configurations. Share via direct link (20% platform commission) or let the marketplace drive discovery (30% commission).
 - **Platform:** Programmatic SEO powerhouse with category pages, template pages, and member profiles.
 
 ---
@@ -161,7 +186,7 @@ Each template represents a published OpenClaw agent configuration. Track:
 - **Classification:** category (must match one of the `CATEGORIES` constants — see 4.6)
 - **Files:** private blob pathname for current zip artifact, file size in bytes, optional public cover image URL
 - **Lifecycle:** `status` (`draft`, `published`, `unpublished`, `deleted`) + `publishedAt`, `unpublishedAt`, `deletedAt`
-- **Versioning:** current version string (semver, e.g. "1.0.0")
+- **Versioning:** current integer version (`1, 2, 3, ...`)
 - **Moderation:** flagged status (boolean), flag reason (set by admin)
 - **Stats:** download count
 - **Timestamps:** created, updated
@@ -206,7 +231,7 @@ Admins can set custom commission rates for specific sellers (e.g., influencer de
 - **Context:** admin notes explaining the override, which admin created it
 - **Timestamps:** created, updated
 
-> If no override exists for a seller, the system uses defaults (direct: 25%, browsing: 50%).
+> If no override exists for a seller, the system uses defaults (direct: 20%, browsing: 30%).
 
 ### 4.6 Categories (Constants — Not a Table)
 
@@ -288,7 +313,7 @@ Blob path conventions:
 
 ```text
 templates/public/covers/{sellerId}/{templateSlug}/{timestamp}-{random}-{filename}
-templates/private/zips/{sellerId}/{templateSlug}/v{semver}.zip
+templates/private/zips/{sellerId}/{templateSlug}/v{version}.zip
 ```
 
 Notes:
@@ -351,7 +376,7 @@ No shareable pre-signed blob download URL is returned to client.
    - Otherwise → sale_type = "browsing"
 3. Look up commission rate:
    a. Check commission_overrides for this seller
-   b. If no override → use defaults (direct: 25%, browsing: 50%)
+   b. If no override → use defaults (direct: 20%, browsing: 30%)
 4. Create Stripe Checkout Session:
    - application_fee_amount = price * (commission_rate / 100)
    - transfer_data.destination = seller's stripe_account_id
@@ -366,8 +391,8 @@ No shareable pre-signed blob download URL is returned to client.
 
 | Sale Type                 | Default Commission | Meaning                                     |
 | ------------------------- | ------------------ | ------------------------------------------- |
-| **Direct** (has `?ref=`)  | 25% to platform    | Seller drove the traffic. Seller keeps 75%. |
-| **Browsing** (no `?ref=`) | 50% to platform    | Platform drove discovery. Seller keeps 50%. |
+| **Direct** (has `?ref=`)  | 20% to platform    | Seller drove the traffic. Seller keeps 80%. |
+| **Browsing** (no `?ref=`) | 30% to platform    | Platform drove discovery. Seller keeps 70%. |
 
 ### 6.4 Commission Overrides (Admin)
 
@@ -393,7 +418,7 @@ https://claws.supply/openclaw/template/{templateSlug}?ref={sellerUsername}
 
 The `ref` parameter is:
 
-- Stored in a cookie (30-day TTL) on first visit, so it persists if the buyer doesn't purchase immediately
+- Stored in a cookie (90-day TTL) on first visit, so it persists if the buyer doesn't purchase immediately
 - Validated: must match the template's seller username
 - If `ref` is present but doesn't match the seller → treat as browsing sale (prevents gaming)
 
@@ -428,13 +453,13 @@ Template API conventions (implemented):
 | `GET`    | `/api/templates`                              | ❌                  | ✅ Shipped  | List published templates. Query params: `category`, `sort` (newest, popular, price_asc, price_desc), `page`, `limit`, `freeOnly`, `search` (backend-ready for phase 2 UI). |
 | `GET`    | `/api/templates/[slug]`                       | ❌                  | ✅ Shipped  | Get single public template by slug. Includes seller info, aggregate stats, and related templates.                                                                            |
 | `POST`   | `/api/templates`                              | ✅ User             | ✅ Shipped  | Create draft template. Body: `{ title, slug, shortDescription, description, category, priceCents }`.                                                                       |
-| `PATCH`  | `/api/templates/[slug]`                       | ✅ Owner/Admin      | ✅ Shipped  | Edit mutable metadata only (slug immutable). Supports optional `coverUpload` blob reference.                                                                                |
-| `POST`   | `/api/templates/[slug]/publish`               | ✅ Owner/Admin      | ✅ Shipped  | Publish initial version. Body includes `{ version, zipUpload, coverUpload? }`.                                                                                              |
-| `POST`   | `/api/templates/[slug]/versions/publish`      | ✅ Owner/Admin      | ✅ Shipped  | Publish a new version on an already published template. Body includes `{ version, zipUpload }`.                                                                             |
+| `PATCH`  | `/api/templates/[slug]`                       | ✅ Owner/Admin      | ✅ Shipped  | Edit mutable metadata only (slug immutable). Supports `coverUpload`, and for draft/unpublished staging also `zipUpload + version + versionNotes`.                         |
+| `POST`   | `/api/templates/[slug]/publish`               | ✅ Owner/Admin      | ✅ Shipped  | Publish from staged draft assets, or inline payload with `{ version, zipUpload, coverUpload?, versionNotes? }`.                                                           |
+| `POST`   | `/api/templates/[slug]/versions/publish`      | ✅ Owner/Admin      | ✅ Shipped  | Publish a new version on an already published template. Body includes `{ version, zipUpload, versionNotes? }`.                                                           |
 | `POST`   | `/api/templates/[slug]/unpublish`             | ✅ Owner/Admin      | ✅ Shipped  | Unpublish currently published template.                                                                                                                                      |
 | `DELETE` | `/api/templates/[slug]`                       | ✅ Owner/Admin      | ✅ Shipped  | Soft delete by setting lifecycle status to `deleted`.                                                                                                                        |
 | `POST`   | `/api/templates/[slug]/uploads/cover-handle`  | ✅ Owner/Admin\*    | ✅ Shipped  | Vercel Blob client-upload handle route for public cover images (`BLOB_READ_WRITE_TOKEN`).                                                                                   |
-| `POST`   | `/api/templates/[slug]/uploads/template-handle` | ✅ Owner/Admin\*  | ✅ Shipped  | Vercel Blob client-upload handle route for private template zips (`PRIVATE_READ_WRITE_TOKEN`), requires semver in client payload.                                          |
+| `POST`   | `/api/templates/[slug]/uploads/template-handle` | ✅ Owner/Admin\*  | ✅ Shipped  | Vercel Blob client-upload handle route for private template zips (`PRIVATE_READ_WRITE_TOKEN`), requires integer `version` in client payload.                              |
 | `GET`    | `/api/templates/[slug]/download`              | ✅ Authenticated    | ✅ Shipped  | Streams private zip from server. Access allowed for seller/admin, buyers with completed purchase, and authenticated users for free templates.                               |
 
 \* Upload-completed callback events are signed by Vercel Blob and validated by `handleUpload`; no session cookie is required for that callback event.
@@ -475,7 +500,7 @@ Deprecated/removed routes:
 | ------ | ---------------------------- | ---- | ----------------------------------------------------------------- |
 | `POST` | `/api/stripe/connect`        | ✅   | Create Stripe Connect account + return onboarding URL             |
 | `GET`  | `/api/stripe/connect/status` | ✅   | Check Stripe account status (onboarding complete, verified, etc.) |
-| `POST` | `/api/stripe/webhook`        | ❌\* | Stripe webhook handler. \*Verified via Stripe signature.          |
+| `POST` | `/api/stripe/webhooks`       | ❌\* | Stripe webhook handler. \*Verified via Stripe signature.          |
 
 ### 7.7 Admin Routes
 
@@ -486,6 +511,16 @@ Deprecated/removed routes:
 | `POST`   | `/api/admin/commission-overrides`          | ✅ Admin | Set override. Body: `{ userId, directRate, browsingRate, notes? }` |
 | `DELETE` | `/api/admin/commission-overrides/[userId]` | ✅ Admin | Remove override (revert to defaults)                               |
 
+### 7.8 Ads Routes
+
+| Method | Route                         | Auth | Description                                                                 |
+| ------ | ----------------------------- | ---- | --------------------------------------------------------------------------- |
+| `GET`  | `/api/ads/availability`       | ❌   | Returns slot limit, occupied count, spots left, pricing metadata, and price IDs. |
+| `GET`  | `/api/ads/campaign`           | ✅   | Returns the current authenticated user's campaign summary, or `null`.       |
+| `POST` | `/api/ads/campaign`           | ✅   | Validates creative/placement, enforces capacity, and returns Stripe Checkout URL. |
+| `POST` | `/api/ads/campaign/cancel`    | ✅   | Schedules cancellation at period end (`cancel_at_period_end=true`).         |
+| `POST` | `/api/ads/logo-handle`        | ✅   | Vercel Blob SVG upload handle route with path/MIME/size guardrails.         |
+
 ---
 
 ## 8. Page Structure & SEO
@@ -495,6 +530,8 @@ Deprecated/removed routes:
 ```
 app/
 ├── page.tsx                                    → /                           (Homepage)
+├── advertise/
+│   └── page.tsx                                → /advertise                  (Advertising sales + campaign management)
 ├── openclaw/
 │   ├── templates/
 │   │   └── [category]/
@@ -557,7 +594,7 @@ app/
   - "Similar Templates" section: Query same category, exclude current, ORDER BY download_count DESC LIMIT 6
 - **Referral tracking:** On page load, if `?ref=` param exists:
   - Validate it matches the seller's username
-  - Store in cookie: `claws_ref_{templateSlug}={sellerUsername}` (30-day expiry)
+  - Store in cookie: `claws_ref_{templateSlug}={sellerUsername}` (90-day expiry)
   - At checkout, read cookie to determine sale type
 
 #### Member Profile (`/member/[username]`)
@@ -595,8 +632,11 @@ app/
 #### Dashboard — Create Template (`/dashboard/templates/new`)
 
 - **Auth required, Seller only**
-- Form: title, slug (auto-generated from title, editable), category (dropdown from CATEGORIES), description (markdown editor), short description, price, cover image upload, zip file upload
-- Slug uniqueness validated in real-time
+- Two-step draft flow on one page:
+  1. Create draft metadata first: title, slug (auto-generated from title, editable), category, markdown description, short description, USD price (`priceCents` stored as integer)
+  2. Upload cover image + versioned zip + version notes, then save draft setup
+- Commission card is shown from shared constants (browsing 30%, direct 20%, 90-day referral window)
+- Slug uniqueness validated server-side on create
 
 #### Dashboard — Settings (`/dashboard/settings`)
 
@@ -664,15 +704,18 @@ For MVP, admin features are **API-only** (no admin UI). Admins use API calls or 
 
 ## 11. Webhook Handlers
 
-### Stripe Webhooks (`POST /api/stripe/webhook`)
+### Stripe Webhooks (`POST /api/stripe/webhooks`)
 
-| Event                              | Action                                                             |
-| ---------------------------------- | ------------------------------------------------------------------ |
-| `checkout.session.completed`       | Create purchase record                                             |
-| `account.updated`                  | Update seller's `stripe_verified` status, re-evaluate `isVerified` |
-| `account.application.deauthorized` | Clear seller's stripe fields, set `stripe_verified = false`        |
+| Event                           | Action                                                                                       |
+| ------------------------------- | -------------------------------------------------------------------------------------------- |
+| `checkout.session.completed`    | Activate campaign after checkout and persist Stripe IDs + current billing period.            |
+| `checkout.session.expired`      | Mark pending checkout campaign as canceled.                                                  |
+| `customer.subscription.updated` | Sync subscription status/period/cancel flag; end campaign on final non-active Stripe states. |
+| `customer.subscription.deleted` | End campaign and stop visibility.                                                            |
+| `invoice.payment_failed`        | Record failure state for observability; do not hide ad immediately.                          |
 
-All webhooks verified via `stripe.webhooks.constructEvent()` with signing secret.
+All webhooks are verified via `stripe.webhooks.constructEvent()` with signing secret.
+Webhook event IDs are persisted for idempotency in `stripe_webhook_event`.
 
 ---
 
@@ -685,11 +728,18 @@ All webhooks verified via `stripe.webhooks.constructEvent()` with signing secret
 5. **Slug constraints:** globally unique, URL-safe lowercase hyphenated, and immutable after creation.
 6. **Description normalization:** markdown is allowed, but `#`/`##` headings are auto-demoted to `###` before persistence.
 7. **Blob separation:** covers are public (`BLOB_READ_WRITE_TOKEN`), template zip artifacts are private (`PRIVATE_READ_WRITE_TOKEN`).
-8. **Upload security:** path, MIME, and max-size are enforced server-side during client-token generation; zip uploads require semver-bound deterministic pathnames.
+8. **Upload security:** path, MIME, and max-size are enforced server-side during client-token generation; zip uploads require integer-version deterministic pathnames.
 9. **Download security:** all template downloads require authentication; access requires owner/admin, purchase, or free-template authenticated access.
-10. **Versioning:** each version is immutable and unique per template; new version must be semver-greater than current version.
+10. **Versioning:** each version is immutable and unique per template; new version must increment by exactly `+1` (integer versioning).
 11. **Download tracking:** `download_count` increments only after private blob fetch begins successfully.
 12. **Soft delete:** deletion sets lifecycle status to `deleted`; data is retained.
+
+### Known Hardening Gaps (Non-Blocking Follow-up)
+
+- Webhook idempotency write timing should persist only after handler success to avoid skipping retriable failed events.
+- Slot-cap enforcement has a potential race condition under high concurrency and should be made atomic.
+- Ad destination URL validation should explicitly restrict to `http`/`https` protocols.
+- Pending campaign reservation should be cleaned up if Stripe Checkout session creation fails after pending upsert.
 
 ---
 
@@ -711,6 +761,13 @@ X_CALLBACK_URL=https://claws.supply/api/auth/x/callback
 STRIPE_SECRET_KEY=sk_...
 STRIPE_PUBLISHABLE_KEY=pk_...
 STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_ADS_WEBHOOK_SECRET=whsec_...
+STRIPE_AD_PRICE_SIDEBAR_SANDBOX=price_...
+STRIPE_AD_PRICE_RESULTS_SANDBOX=price_...
+STRIPE_AD_PRICE_BOTH_SANDBOX=price_...
+STRIPE_AD_PRICE_SIDEBAR_PRODUCTION=price_...
+STRIPE_AD_PRICE_RESULTS_PRODUCTION=price_...
+STRIPE_AD_PRICE_BOTH_PRODUCTION=price_...
 
 # Vercel Blob storage
 BLOB_READ_WRITE_TOKEN=...      # Public assets (covers/images)

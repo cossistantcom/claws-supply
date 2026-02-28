@@ -2,6 +2,11 @@
 
 import { useCallback, useMemo, useRef, useState } from "react";
 import { upload } from "@vercel/blob/client";
+import { buildAdLogoPathname } from "@/lib/ads/pathnames";
+import {
+  AD_LOGO_ALLOWED_CONTENT_TYPES,
+  MAX_AD_LOGO_BYTES,
+} from "@/lib/ads/policy";
 import {
   buildCoverPathname,
   buildTemplateZipPathname,
@@ -13,7 +18,7 @@ import {
   TEMPLATE_ZIP_ALLOWED_CONTENT_TYPES,
 } from "@/lib/templates/policy";
 
-type UploadKind = "cover" | "zip";
+type UploadKind = "cover" | "zip" | "ad-logo";
 type UploadStatus = "idle" | "uploading" | "success" | "error";
 type UploadResult = Awaited<ReturnType<typeof upload>>;
 
@@ -22,13 +27,32 @@ type UploadValidation = {
   allowedContentTypes?: readonly string[];
 };
 
-type UseBlobUploadOptions = {
-  templateSlug: string;
-  sellerId: string;
-  kind: UploadKind;
-  version?: number;
+type BaseOptions = {
   validation?: UploadValidation;
 };
+
+type CoverUploadOptions = BaseOptions & {
+  kind: "cover";
+  templateSlug: string;
+  sellerId: string;
+};
+
+type ZipUploadOptions = BaseOptions & {
+  kind: "zip";
+  templateSlug: string;
+  sellerId: string;
+  version: number;
+};
+
+type AdLogoUploadOptions = BaseOptions & {
+  kind: "ad-logo";
+  userId: string;
+};
+
+type UseBlobUploadOptions =
+  | CoverUploadOptions
+  | ZipUploadOptions
+  | AdLogoUploadOptions;
 
 type UseBlobUploadState = {
   status: UploadStatus;
@@ -52,10 +76,14 @@ function getErrorMessage(error: unknown): string {
   return "Upload failed.";
 }
 
-function resolveHandleUploadUrl(templateSlug: string, kind: UploadKind): string {
-  const encodedSlug = encodeURIComponent(templateSlug);
+function resolveHandleUploadUrl(options: UseBlobUploadOptions): string {
+  if (options.kind === "ad-logo") {
+    return "/api/ads/logo-handle";
+  }
 
-  if (kind === "cover") {
+  const encodedSlug = encodeURIComponent(options.templateSlug);
+
+  if (options.kind === "cover") {
     return `/api/templates/${encodedSlug}/uploads/cover-handle`;
   }
 
@@ -63,6 +91,14 @@ function resolveHandleUploadUrl(templateSlug: string, kind: UploadKind): string 
 }
 
 function resolveValidation(options: UseBlobUploadOptions): Required<UploadValidation> {
+  if (options.kind === "ad-logo") {
+    return {
+      maxSizeBytes: options.validation?.maxSizeBytes ?? MAX_AD_LOGO_BYTES,
+      allowedContentTypes:
+        options.validation?.allowedContentTypes ?? AD_LOGO_ALLOWED_CONTENT_TYPES,
+    };
+  }
+
   if (options.kind === "cover") {
     return {
       maxSizeBytes: options.validation?.maxSizeBytes ?? MAX_COVER_IMAGE_BYTES,
@@ -102,6 +138,13 @@ function validateFileBeforeUpload(options: {
     return null;
   }
 
+  if (
+    options.kind === "ad-logo" &&
+    options.file.name.toLowerCase().endsWith(".svg")
+  ) {
+    return null;
+  }
+
   const accepted = allowed.join(", ");
   return `Unsupported file type. Accepted types: ${accepted}.`;
 }
@@ -115,10 +158,7 @@ export function useBlobUpload(options: UseBlobUploadOptions) {
     result: null,
   });
 
-  const handleUploadUrl = useMemo(
-    () => resolveHandleUploadUrl(options.templateSlug, options.kind),
-    [options.kind, options.templateSlug],
-  );
+  const handleUploadUrl = useMemo(() => resolveHandleUploadUrl(options), [options]);
   const validation = resolveValidation(options);
 
   const reset = useCallback(() => {
@@ -182,19 +222,34 @@ export function useBlobUpload(options: UseBlobUploadOptions) {
                 templateSlug: options.templateSlug,
                 originalFilename: file.name,
               })
-            : buildTemplateZipPathname(
-                options.sellerId,
-                options.templateSlug,
-                options.version!,
-              );
+            : options.kind === "zip"
+              ? buildTemplateZipPathname(
+                  options.sellerId,
+                  options.templateSlug,
+                  options.version,
+                )
+              : buildAdLogoPathname({
+                  userId: options.userId,
+                  originalFilename: file.name,
+                });
 
         const result = await upload(pathname, file, {
-          access: options.kind === "cover" ? "public" : "private",
+          access: options.kind === "zip" ? "private" : "public",
           handleUploadUrl,
           clientPayload: JSON.stringify({
-            kind: options.kind,
-            templateSlug: options.templateSlug,
-            ...(options.version ? { version: options.version } : {}),
+            ...(options.kind === "ad-logo"
+              ? {
+                  kind: "ad-logo",
+                }
+              : {
+                  kind: options.kind,
+                  templateSlug: options.templateSlug,
+                  ...(options.kind === "zip"
+                    ? {
+                        version: options.version,
+                      }
+                    : {}),
+                }),
           }),
           abortSignal: abortController.signal,
           onUploadProgress: (event) => {
@@ -227,10 +282,7 @@ export function useBlobUpload(options: UseBlobUploadOptions) {
     },
     [
       handleUploadUrl,
-      options.kind,
-      options.sellerId,
-      options.templateSlug,
-      options.version,
+      options,
       validation,
     ],
   );

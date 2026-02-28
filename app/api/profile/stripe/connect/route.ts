@@ -1,19 +1,8 @@
 import { jsonError, jsonSuccess, resolveApiError } from "@/lib/api/response";
+import { getBaseUrlFromRequest } from "@/lib/api/request";
 import { getSessionFromRequest } from "@/lib/auth/session";
 import { createStripeConnectOnboardingLink } from "@/lib/profile/server";
 import type { ConnectStripeResponse } from "@/lib/profile/types";
-
-function getBaseUrlFromRequest(request: Request): string {
-  const forwardedProtocol = request.headers.get("x-forwarded-proto");
-  const forwardedHost = request.headers.get("x-forwarded-host");
-
-  if (forwardedProtocol && forwardedHost) {
-    return `${forwardedProtocol}://${forwardedHost}`;
-  }
-
-  const url = new URL(request.url);
-  return `${url.protocol}//${url.host}`;
-}
 
 export async function POST(request: Request) {
   const session = await getSessionFromRequest(request);
@@ -45,4 +34,3 @@ export async function POST(request: Request) {
     });
   }
 }
-

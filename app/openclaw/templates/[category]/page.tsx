@@ -1,10 +1,10 @@
 import { OpenClawPageShell } from "@/components/openclaw-page-shell";
-import { TemplateCard } from "@/components/template-card";
+import { TemplateFeedGrid } from "@/components/template-feed-grid";
+import { listRenderableResultsAds } from "@/lib/ads/read-service";
 import { getCategoryBySlug, isCategorySlug } from "@/lib/categories";
 import {
   categoryPath,
   categoryPathWithSort,
-  discoveryPath,
 } from "@/lib/routes";
 import { buildSeoMetadata } from "@/lib/seo";
 import { parseTemplateListQueryFromSearchParams } from "@/lib/templates/read-schemas";
@@ -133,10 +133,13 @@ export default async function CategoryTemplatesPage({
 
   const query = parseCategoryListQuery(rawSearchParams);
   const selectedSort = query.sort;
-  const result = await listPublishedTemplatesCached({
-    ...query,
-    category: categoryDefinition.slug,
-  });
+  const [result, sponsoredAds] = await Promise.all([
+    listPublishedTemplatesCached({
+      ...query,
+      category: categoryDefinition.slug,
+    }),
+    listRenderableResultsAds(),
+  ]);
   const templates = result.items;
 
   return (
@@ -177,11 +180,7 @@ export default async function CategoryTemplatesPage({
       </header>
 
       {templates.length > 0 ? (
-        <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          {templates.map((template) => (
-            <TemplateCard key={template.slug} template={template} />
-          ))}
-        </section>
+        <TemplateFeedGrid templates={templates} sponsoredAds={sponsoredAds} />
       ) : (
         <section className="border border-border p-4 text-xs text-muted-foreground">
           No published templates found for this category.

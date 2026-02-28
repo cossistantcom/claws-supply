@@ -139,6 +139,24 @@ const sections = [
     ),
   },
   {
+    title: "Advertising Subscriptions and Content Standards",
+    content: (
+      <>
+        <p>
+          Advertising placements are sold as recurring subscriptions through Stripe.
+          Advertiser-initiated cancellations take effect at the end of the current
+          paid billing cycle unless otherwise stated.
+        </p>
+        <p className="mt-4">
+          We may edit, reject, remove, suspend, or terminate ad campaigns that are
+          misleading, unlawful, harmful, deceptive, abusive, or otherwise inconsistent
+          with our platform standards. In severe cases, we may terminate service
+          immediately without refund.
+        </p>
+      </>
+    ),
+  },
+  {
     title: "Intellectual Property",
     content: (
       <>
@@ -267,7 +285,7 @@ export default function TermsPage() {
   return (
     <LegalPageLayout
       title="Terms of Service"
-      effectiveDate="February 27, 2026"
+      effectiveDate="February 28, 2026"
       sections={sections}
     />
   );

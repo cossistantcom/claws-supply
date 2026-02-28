@@ -1,5 +1,6 @@
 import { OpenClawPageShell } from "@/components/openclaw-page-shell";
-import { TemplateCard } from "@/components/template-card";
+import { TemplateFeedGrid } from "@/components/template-feed-grid";
+import { listRenderableResultsAds } from "@/lib/ads/read-service";
 import { getDiscoveryBySlug } from "@/lib/categories";
 import { discoveryPath } from "@/lib/routes";
 import { buildSeoMetadata } from "@/lib/seo";
@@ -90,7 +91,10 @@ export async function generateMetadata({
 export default async function PopularTemplatesPage({ searchParams }: DiscoveryPageProps) {
   const rawSearchParams = await searchParams;
   const query = parseDiscoveryQuery(rawSearchParams);
-  const result = await listPublishedTemplatesCached(query);
+  const [result, sponsoredAds] = await Promise.all([
+    listPublishedTemplatesCached(query),
+    listRenderableResultsAds(),
+  ]);
   const templates = result.items;
 
   return (
@@ -111,11 +115,11 @@ export default async function PopularTemplatesPage({ searchParams }: DiscoveryPa
       </header>
 
       {templates.length > 0 ? (
-        <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          {templates.map((template) => (
-            <TemplateCard key={template.slug} template={template} showCategory />
-          ))}
-        </section>
+        <TemplateFeedGrid
+          templates={templates}
+          sponsoredAds={sponsoredAds}
+          showCategory
+        />
       ) : (
         <section className="border border-border p-4 text-xs text-muted-foreground">
           No published templates are available yet.

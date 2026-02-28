@@ -57,6 +57,13 @@
       "when": 1772252423289,
       "tag": "0007_rich_namora",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1772257510942,
+      "tag": "0008_huge_miracleman",
+      "breakpoints": true
     }
   ]
 }

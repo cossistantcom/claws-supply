@@ -50,6 +50,11 @@ const sections = [
             <strong>Uploaded Content:</strong> Template files, cover assets, and
             listing text you upload to publish templates.
           </li>
+          <li>
+            <strong>Advertising Campaign Data:</strong> If you run ads, we store
+            campaign creative (logo, name, URL, description), placement choices,
+            campaign moderation actions, and subscription billing state.
+          </li>
         </ul>
       </>
     ),
@@ -199,7 +204,7 @@ export default function PolicyPage() {
   return (
     <LegalPageLayout
       title="Privacy Policy"
-      effectiveDate="February 27, 2026"
+      effectiveDate="February 28, 2026"
       sections={sections}
     />
   );

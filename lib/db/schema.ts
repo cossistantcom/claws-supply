@@ -27,6 +27,19 @@ export const templateStatusEnum = pgEnum("template_status", [
   "unpublished",
   "deleted",
 ]);
+export const adPlacementEnum = pgEnum("ad_placement", [
+  "sidebar",
+  "results",
+  "both",
+]);
+export const adCampaignStatusEnum = pgEnum("ad_campaign_status", [
+  "checkout_pending",
+  "active",
+  "cancel_scheduled",
+  "ended",
+  "canceled",
+  "suspended_policy",
+]);
 
 // Better Auth core tables
 export const user = pgTable(
@@ -311,6 +324,85 @@ export const commissionOverride = pgTable(
     browsingRateCheck: check(
       "commission_override_browsing_rate_check",
       sql`${table.browsingRate} >= 0 AND ${table.browsingRate} <= 100`,
+    ),
+  }),
+);
+
+export const adCampaign = pgTable(
+  "ad_campaign",
+  {
+    id: text("id").primaryKey(),
+    advertiserUserId: text("advertiser_user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    companyName: text("company_name").notNull(),
+    websiteUrl: text("website_url").notNull(),
+    shortDescription: text("short_description").notNull(),
+    logoUrl: text("logo_url").notNull(),
+    logoObjectKey: text("logo_object_key").notNull(),
+    placement: adPlacementEnum("placement").notNull(),
+    stripePriceId: text("stripe_price_id").notNull(),
+    stripeCustomerId: text("stripe_customer_id"),
+    stripeCheckoutSessionId: text("stripe_checkout_session_id"),
+    stripeSubscriptionId: text("stripe_subscription_id"),
+    stripeSubscriptionStatus: text("stripe_subscription_status"),
+    status: adCampaignStatusEnum("status").notNull().default("checkout_pending"),
+    cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
+    currentPeriodStart: timestamp("current_period_start"),
+    currentPeriodEnd: timestamp("current_period_end"),
+    checkoutExpiresAt: timestamp("checkout_expires_at"),
+    canceledAt: timestamp("canceled_at"),
+    suspendedAt: timestamp("suspended_at"),
+    suspendedReason: text("suspended_reason"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    advertiserIdx: index("ad_campaign_advertiser_user_id_idx").on(
+      table.advertiserUserId,
+    ),
+    statusIdx: index("ad_campaign_status_idx").on(table.status),
+    placementIdx: index("ad_campaign_placement_idx").on(table.placement),
+    currentPeriodEndIdx: index("ad_campaign_current_period_end_idx").on(
+      table.currentPeriodEnd,
+    ),
+    stripeCheckoutSessionUnique: uniqueIndex(
+      "ad_campaign_stripe_checkout_session_id_unique",
+    ).on(table.stripeCheckoutSessionId),
+    stripeSubscriptionUnique: uniqueIndex(
+      "ad_campaign_stripe_subscription_id_unique",
+    ).on(table.stripeSubscriptionId),
+    liveCampaignPerUserUnique: uniqueIndex("ad_campaign_live_user_unique")
+      .on(table.advertiserUserId)
+      .where(
+        sql`${table.status} in ('checkout_pending', 'active', 'cancel_scheduled')`,
+      ),
+    companyNameLengthCheck: check(
+      "ad_campaign_company_name_length_check",
+      sql`char_length(${table.companyName}) >= 2 AND char_length(${table.companyName}) <= 80`,
+    ),
+    shortDescriptionLengthCheck: check(
+      "ad_campaign_short_description_length_check",
+      sql`char_length(${table.shortDescription}) >= 20 AND char_length(${table.shortDescription}) <= 180`,
+    ),
+    websiteUrlLengthCheck: check(
+      "ad_campaign_website_url_length_check",
+      sql`char_length(${table.websiteUrl}) >= 8 AND char_length(${table.websiteUrl}) <= 500`,
+    ),
+  }),
+);
+
+export const stripeWebhookEvent = pgTable(
+  "stripe_webhook_event",
+  {
+    eventId: text("event_id").primaryKey(),
+    eventType: text("event_type").notNull(),
+    processedAt: timestamp("processed_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    eventTypeIdx: index("stripe_webhook_event_event_type_idx").on(table.eventType),
+    processedAtIdx: index("stripe_webhook_event_processed_at_idx").on(
+      table.processedAt,
     ),
   }),
 );
