@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { OpenClawPageShell } from "@/components/openclaw-page-shell";
 import { MemberAvatar } from "@/components/members/member-avatar";
+import { getSessionFromNextHeaders } from "@/lib/auth/session";
 import { listMembersForDirectory } from "@/lib/members/read-service";
 import { memberPath, membersPath } from "@/lib/routes";
 import { buildSeoMetadata } from "@/lib/seo";
@@ -95,11 +96,14 @@ export async function generateMetadata({
 
 export default async function MembersPage({ searchParams }: MembersPageProps) {
   const query = parseSearchParams(await searchParams);
-  const result = await listMembersForDirectory({
-    q: query.q,
-    page: query.page,
-    limit: MEMBERS_DIRECTORY_LIMIT,
-  });
+  const [result, session] = await Promise.all([
+    listMembersForDirectory({
+      q: query.q,
+      page: query.page,
+      limit: MEMBERS_DIRECTORY_LIMIT,
+    }),
+    getSessionFromNextHeaders(),
+  ]);
   const previousPageHref = buildMembersHref({
     q: query.q,
     page: Math.max(result.page - 1, 1),
@@ -124,12 +128,14 @@ export default async function MembersPage({ searchParams }: MembersPageProps) {
                 {result.total.toLocaleString()} members.
               </p>
             </div>
-            <Link
-              href="/auth/sign-up"
-              className="border border-border px-5 py-2 text-sm transition-colors hover:border-cossistant-orange/40"
-            >
-              Join the community
-            </Link>
+            {!session ? (
+              <Link
+                href="/auth/sign-up"
+                className="border border-border px-5 py-2 text-sm transition-colors hover:border-cossistant-orange/40"
+              >
+                Join the community
+              </Link>
+            ) : null}
           </div>
 
           <form action={membersPath()} method="get" className="flex gap-2">

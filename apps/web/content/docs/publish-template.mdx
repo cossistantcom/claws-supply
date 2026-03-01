@@ -1,0 +1,55 @@
+---
+title: How to Publish a Template
+description: End-to-end publish flow with the CLI, including draft creation and final listing steps.
+---
+
+Publishing is CLI-first on Claws.supply.
+
+## Prerequisites
+
+- You have a Claws.supply account.
+- You can run the CLI from your local project directory.
+- You have a template package ready to build.
+
+## 1) Authenticate in the CLI
+
+```bash
+npx claws-supply auth
+```
+
+## 2) Build your signed template package
+
+```bash
+npx claws-supply build
+```
+
+## 3) Publish from CLI
+
+```bash
+npx claws-supply publish
+```
+
+The publish command creates a **draft template** and prints the template URL.
+
+## What publish creates
+
+- A draft listing is created under your account.
+- The draft is visible to you (and admins), not publicly listed yet.
+- The generated page is where you finalize metadata, cover image, and release notes.
+
+## Finalize and make it public
+
+From your template page:
+
+1. Review title, category, description, and price.
+2. Add a cover image and version notes.
+3. Click **Publish** to make the listing public.
+
+## Common issues to check
+
+- Slug already taken.
+- Invalid zip type or oversized file.
+- Archive signature/manifest mismatch.
+- Missing auth or expired upload token.
+
+For paid listings, complete [Verified Seller + Stripe Connect](/docs/verified-seller-stripe-connect) first.

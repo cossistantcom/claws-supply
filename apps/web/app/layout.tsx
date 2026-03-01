@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { RootProvider } from "fumadocs-ui/provider/next";
 import { GeistMono } from "geist/font/mono";
 import { GeistPixelSquare } from "geist/font/pixel";
 import { Navbar } from "@/components/navbar";
@@ -34,12 +35,14 @@ export default async function RootLayout({
       className={`dark ${GeistPixelSquare.variable} ${GeistMono.variable}`}
     >
       <body className="font-mono antialiased bg-background text-foreground min-h-screen">
-        <MainProviders>
-          <Navbar user={navbarUser} />
-          {children}
-          <SiteFooter />
-          <Toaster />
-        </MainProviders>
+        <RootProvider theme={{ enabled: false }}>
+          <MainProviders>
+            <Navbar user={navbarUser} />
+            {children}
+            <SiteFooter />
+            <Toaster />
+          </MainProviders>
+        </RootProvider>
       </body>
     </html>
   );

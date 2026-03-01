@@ -1,0 +1,11 @@
+{
+  "title": "Claws.supply Docs",
+  "description": "Simple guides for publishing, buying, and selling OpenClaw templates.",
+  "pages": [
+    "index",
+    "publish-template",
+    "use-template",
+    "safety",
+    "verified-seller-stripe-connect"
+  ]
+}

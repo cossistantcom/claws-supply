@@ -85,6 +85,12 @@ export function Navbar({ user }: NavbarProps) {
             >
               ADVERTISE
             </Link>
+            <Link
+              className="text-xs tracking-wider hover:opacity-80 transition-opacity"
+              href="/docs"
+            >
+              DOCS
+            </Link>
             {isLoggedIn ? (
               <Button
                 variant="ghost"

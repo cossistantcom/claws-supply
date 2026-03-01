@@ -17,6 +17,7 @@ coverage
 .next/
 out/
 .turbo/
+.source/
 
 # production
 build

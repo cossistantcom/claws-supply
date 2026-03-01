@@ -1,4 +1,6 @@
 import { SignUpForm } from "@/components/auth/sign-up-form";
+import { getSessionFromNextHeaders } from "@/lib/auth/session";
+import { redirect } from "next/navigation";
 
 const DEFAULT_REDIRECT_PATH = "/profile";
 
@@ -31,9 +33,16 @@ function resolveSafeRedirectPath(candidate: string | null): string {
 }
 
 export default async function SignUpPage({ searchParams }: SignUpPageProps) {
-  const params = await searchParams;
+  const [session, params] = await Promise.all([
+    getSessionFromNextHeaders(),
+    searchParams,
+  ]);
   const nextParam = getFirstValue(params.next);
   const callbackURL = resolveSafeRedirectPath(nextParam ?? null);
+
+  if (session) {
+    redirect(callbackURL);
+  }
 
   return <SignUpForm callbackURL={callbackURL} />;
 }

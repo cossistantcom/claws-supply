@@ -1,9 +1,8 @@
-import { Button } from "@/components/ui/button";
+import { SectionStyleMenu } from "@/components/navigation/section-style-menu";
 import { UploadTemplateMenuCta } from "@/components/upload-template-menu-cta";
 import { getSectionMenuItems } from "@/lib/categories";
 import { categoryPath, discoveryPath } from "@/lib/routes";
 import { getTemplateCountsForMenuCached } from "@/lib/templates/read-service";
-import Link from "next/link";
 
 export async function Menu() {
   const counts = await getTemplateCountsForMenuCached();
@@ -25,27 +24,14 @@ export async function Menu() {
   );
 
   return (
-    <aside className="w-80 p-4 flex flex-col z-[9999]">
-      <div className="flex-grow overflow-y-auto">
-        <div className="space-y-4">
-          <div className="space-y-2">
-            {sectionItems.map((section) => (
-              <Link href={section.href} key={section.key}>
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start text-sm"
-                >
-                  {section.label}
-                  <span className="ml-auto text-primary/50 font-mono text-xs">
-                    {section.count}
-                  </span>
-                </Button>
-              </Link>
-            ))}
-          </div>
-          <UploadTemplateMenuCta />
-        </div>
-      </div>
-    </aside>
+    <SectionStyleMenu
+      items={sectionItems.map((section) => ({
+        key: section.key,
+        label: section.label,
+        href: section.href,
+        trailing: section.count,
+      }))}
+      footer={<UploadTemplateMenuCta />}
+    />
   );
 }
