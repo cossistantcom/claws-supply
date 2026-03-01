@@ -23,7 +23,7 @@ export function stripMarkdown(markdown: string): string {
   );
 }
 
-export function deriveShortDescriptionFromMarkdown(
+export function deriveTemplateExcerptFromMarkdown(
   markdown: string,
   maxLength = 240,
 ): string {

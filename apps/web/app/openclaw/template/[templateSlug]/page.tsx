@@ -62,7 +62,7 @@ export async function generateMetadata({
 
   return buildSeoMetadata({
     title: `${detail.template.title} — OpenClaw Template on Claws.supply`,
-    description: detail.template.shortDescription,
+    description: detail.template.excerpt,
     path: templatePath(detail.template.slug),
     ogType: "article",
   });
@@ -168,7 +168,7 @@ export default async function TemplateDetailPage({ params }: TemplatePageProps) 
           </div>
         </div>
 
-        <p className="max-w-3xl text-sm text-muted-foreground">{detail.template.shortDescription}</p>
+        <p className="max-w-3xl text-sm text-muted-foreground">{detail.template.excerpt}</p>
 
         {detail.template.versionNotes ? (
           <div className="border border-border bg-muted/20 p-3 text-xs">

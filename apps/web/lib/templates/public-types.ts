@@ -37,7 +37,7 @@ export type PublicTemplateCard = {
   id: string;
   slug: string;
   title: string;
-  shortDescription: string;
+  excerpt: string;
   category: CategorySlug;
   priceCents: number;
   currency: string;
@@ -55,7 +55,7 @@ export type PublicTemplateDetailTemplate = {
   id: string;
   slug: string;
   title: string;
-  shortDescription: string;
+  excerpt: string;
   description: string;
   category: CategorySlug;
   priceCents: number;

@@ -11,6 +11,7 @@ import {
   DEFAULT_PLATFORM_COMMISSION_RATE,
   type TemplateSaleType,
 } from "@/lib/templates/commission";
+import { deriveTemplateExcerptFromMarkdown } from "@/lib/templates/form-helpers";
 import { requireTemplateRecordBySlug } from "@/lib/templates/repository";
 import { PurchaseServiceError } from "./errors";
 import type { CreatePurchaseCheckoutInput } from "./schemas";
@@ -693,7 +694,7 @@ export async function createTemplatePurchaseCheckout(options: {
             unit_amount: templateRow.priceCents,
             product_data: {
               name: templateRow.title,
-              description: templateRow.shortDescription,
+              description: deriveTemplateExcerptFromMarkdown(templateRow.description, 180),
             },
           },
         },

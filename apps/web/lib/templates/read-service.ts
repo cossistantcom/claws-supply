@@ -19,6 +19,7 @@ import { db } from "@/lib/db";
 import { review, template, user } from "@/lib/db/schema";
 import { isUserVerified } from "@/lib/profile/verification";
 import { TemplateServiceError } from "./errors";
+import { deriveTemplateExcerptFromMarkdown } from "./form-helpers";
 import type {
   PublicTemplateCard,
   PublicTemplateDetail,
@@ -38,7 +39,6 @@ type TemplateReadRow = {
   slug: string;
   title: string;
   description: string;
-  shortDescription: string;
   category: string;
   priceCents: number;
   currency: string;
@@ -99,7 +99,7 @@ function buildTemplateListWhere(input: TemplateListQueryInput): SQL<unknown> {
     const pattern = normalizeSearchPattern(input.search);
 
     conditions.push(
-      or(ilike(template.title, pattern), ilike(template.shortDescription, pattern))!,
+      or(ilike(template.title, pattern), ilike(template.description, pattern))!,
     );
   }
 
@@ -186,7 +186,7 @@ function mapPublicTemplateCard(row: TemplateReadRow): PublicTemplateCard {
     id: row.id,
     slug: row.slug,
     title: row.title,
-    shortDescription: row.shortDescription,
+    excerpt: deriveTemplateExcerptFromMarkdown(row.description),
     category: mapCategory(row),
     priceCents: row.priceCents,
     currency: row.currency,
@@ -217,7 +217,6 @@ async function listTemplateRows(
       slug: template.slug,
       title: template.title,
       description: template.description,
-      shortDescription: template.shortDescription,
       category: template.category,
       priceCents: template.priceCents,
       currency: template.currency,
@@ -405,7 +404,7 @@ export async function getPublishedTemplateBySlug(
       id: row.id,
       slug: row.slug,
       title: row.title,
-      shortDescription: row.shortDescription,
+      excerpt: deriveTemplateExcerptFromMarkdown(row.description),
       description: row.description,
       category,
       priceCents: row.priceCents,
@@ -457,7 +456,7 @@ export async function getTemplateDetailBySlugIncludingUnpublished(
       id: row.id,
       slug: row.slug,
       title: row.title,
-      shortDescription: row.shortDescription,
+      excerpt: deriveTemplateExcerptFromMarkdown(row.description),
       description: row.description,
       category,
       priceCents: row.priceCents,

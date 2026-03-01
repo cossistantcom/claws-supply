@@ -46,12 +46,6 @@ const titleSchema = z
   .min(3, "Title must be at least 3 characters.")
   .max(140, "Title must be 140 characters or less.");
 
-const shortDescriptionSchema = z
-  .string()
-  .trim()
-  .min(10, "Short description must be at least 10 characters.")
-  .max(240, "Short description must be 240 characters or less.");
-
 const descriptionSchema = z
   .string()
   .trim()
@@ -79,7 +73,6 @@ export const createTemplateSchema = z
   .object({
     title: titleSchema,
     slug: slugParamSchema.shape.slug,
-    shortDescription: shortDescriptionSchema,
     description: descriptionSchema,
     category: categorySchema,
     priceCents: priceSchema.default(0),
@@ -90,7 +83,6 @@ export const createTemplateSchema = z
 export const updateTemplateSchema = z
   .object({
     title: titleSchema.optional(),
-    shortDescription: shortDescriptionSchema.optional(),
     description: descriptionSchema.optional(),
     category: categorySchema.optional(),
     priceCents: priceSchema.optional(),
@@ -102,7 +94,6 @@ export const updateTemplateSchema = z
   .refine(
     (payload) =>
       payload.title !== undefined ||
-      payload.shortDescription !== undefined ||
       payload.description !== undefined ||
       payload.category !== undefined ||
       payload.priceCents !== undefined ||

@@ -41,7 +41,7 @@ export default function PublishViaCliPage() {
 {`npx claws-supply publish`}
           </pre>
           <p className="text-sm text-muted-foreground">
-            The CLI prints the template URL after draft creation. Only you and admins can view it until it is published.
+            The CLI prints the direct edit URL after draft creation. Only you and admins can view it until it is published.
           </p>
         </section>
 

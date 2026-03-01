@@ -10,7 +10,6 @@ export type TemplateMetadataFormValues = {
   slug: string;
   category: CategorySlug;
   description: string;
-  shortDescription: string;
   priceCents: number;
 };
 
@@ -22,7 +21,6 @@ type TemplateMetadataFieldsProps = {
   onSlugChange: (value: string) => void;
   onCategoryChange: (value: CategorySlug) => void;
   onDescriptionChange: (value: string) => void;
-  onShortDescriptionChange: (value: string) => void;
   onPriceCentsChange: (value: number) => void;
 };
 
@@ -34,7 +32,6 @@ export function TemplateMetadataFields({
   onSlugChange,
   onCategoryChange,
   onDescriptionChange,
-  onShortDescriptionChange,
   onPriceCentsChange,
 }: TemplateMetadataFieldsProps) {
   return (
@@ -102,27 +99,6 @@ export function TemplateMetadataFields({
           onValueCentsChange={onPriceCentsChange}
           disabled={disabled}
         />
-      </div>
-
-      <div className="space-y-1">
-        <label
-          htmlFor="template-short-description"
-          className="text-xs uppercase tracking-wide"
-        >
-          Short Description
-        </label>
-        <Textarea
-          id="template-short-description"
-          value={values.shortDescription}
-          onChange={(event) => onShortDescriptionChange(event.target.value)}
-          maxLength={240}
-          rows={3}
-          required
-          disabled={disabled}
-        />
-        <p className="text-[11px] text-muted-foreground">
-          {values.shortDescription.length}/240
-        </p>
       </div>
 
       <div className="space-y-1">

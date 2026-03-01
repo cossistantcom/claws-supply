@@ -13,6 +13,7 @@ import { createLogger, printHeader } from "../utils/logger";
 import { createSpinner } from "../utils/spinner";
 import { CliError, EXIT_CODES } from "../utils/errors";
 import { resolveApiBase } from "../lib/api-base";
+import { toTemplateEditUrl } from "../lib/template-url";
 
 export type PublishCommandOptions = {
   dev?: boolean;
@@ -140,6 +141,6 @@ export async function runPublishCommand(options: PublishCommandOptions): Promise
   }
 
   logger.success("Publish complete.");
-  logger.line(`Template URL: ${finalizeResult.templateUrl}`);
+  logger.line(`Template Edit URL: ${toTemplateEditUrl(finalizeResult.templateUrl)}`);
   logger.line(`Status: ${finalizeResult.template.status}`);
 }

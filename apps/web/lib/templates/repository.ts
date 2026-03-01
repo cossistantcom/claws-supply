@@ -9,7 +9,6 @@ export const templateRecordSelect = {
   slug: template.slug,
   title: template.title,
   description: template.description,
-  shortDescription: template.shortDescription,
   priceCents: template.priceCents,
   currency: template.currency,
   category: template.category,
@@ -38,7 +37,6 @@ export type TemplateRecord = {
   slug: string;
   title: string;
   description: string;
-  shortDescription: string;
   priceCents: number;
   currency: string;
   category: string;
@@ -67,7 +65,6 @@ export type TemplateDTO = {
   slug: string;
   title: string;
   description: string;
-  shortDescription: string;
   priceCents: number;
   currency: string;
   category: string;
@@ -96,7 +93,6 @@ export function mapTemplateDTO(row: TemplateRecord): TemplateDTO {
     slug: row.slug,
     title: row.title,
     description: row.description,
-    shortDescription: row.shortDescription,
     priceCents: row.priceCents,
     currency: row.currency,
     category: row.category,

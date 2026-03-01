@@ -41,7 +41,7 @@ export function TemplateCard({ template, showCategory = false }: TemplateCardPro
           </Link>
         </h3>
         <p className="text-xs leading-relaxed text-muted-foreground">
-          {template.shortDescription}
+          {template.excerpt}
         </p>
       </div>
 

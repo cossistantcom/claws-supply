@@ -175,7 +175,6 @@ export const template = pgTable(
     slug: text("slug").notNull(),
     title: text("title").notNull(),
     description: text("description").notNull(),
-    shortDescription: text("short_description").notNull(),
     priceCents: integer("price_cents").notNull().default(0),
     currency: text("currency").notNull().default("USD"),
     category: text("category").notNull(),

@@ -25,7 +25,6 @@ import {
   type TemplateMutationDTO,
   type TemplateVersionDTO,
 } from "@/lib/templates/client/api";
-import { deriveShortDescriptionFromMarkdown } from "@/lib/templates/form-helpers";
 
 type TemplateOwnerPanelProps = {
   initialTemplate: TemplateMutationDTO;
@@ -50,7 +49,6 @@ function toMetadataValues(template: TemplateMutationDTO): TemplateMetadataFormVa
     slug: template.slug,
     category: template.category as TemplateMetadataFormValues["category"],
     description: template.description,
-    shortDescription: template.shortDescription,
     priceCents: template.priceCents,
   };
 }
@@ -84,11 +82,6 @@ export function TemplateOwnerPanel({
   const [template, setTemplate] = useState(initialTemplate);
   const [versions, setVersions] = useState(initialVersions);
   const [metadata, setMetadata] = useState(() => toMetadataValues(initialTemplate));
-  const [isShortDescriptionManuallyEdited, setIsShortDescriptionManuallyEdited] =
-    useState(
-      initialTemplate.shortDescription !==
-        deriveShortDescriptionFromMarkdown(initialTemplate.description),
-    );
   const [currentVersionNotesDraft, setCurrentVersionNotesDraft] = useState(
     initialTemplate.versionNotes ?? "",
   );
@@ -101,17 +94,12 @@ export function TemplateOwnerPanel({
     setVersions(initialVersions);
     setMetadata(toMetadataValues(initialTemplate));
     setCurrentVersionNotesDraft(initialTemplate.versionNotes ?? "");
-    setIsShortDescriptionManuallyEdited(
-      initialTemplate.shortDescription !==
-        deriveShortDescriptionFromMarkdown(initialTemplate.description),
-    );
   }, [initialTemplate, initialVersions]);
 
   const canSaveEdits = template.status !== "deleted";
   const hasMetadataChanges =
     metadata.title !== template.title ||
     metadata.description !== template.description ||
-    metadata.shortDescription !== template.shortDescription ||
     metadata.category !== template.category ||
     metadata.priceCents !== template.priceCents;
 
@@ -135,9 +123,6 @@ export function TemplateOwnerPanel({
         ...(metadata.title !== template.title ? { title: metadata.title } : {}),
         ...(metadata.description !== template.description
           ? { description: metadata.description }
-          : {}),
-        ...(metadata.shortDescription !== template.shortDescription
-          ? { shortDescription: metadata.shortDescription }
           : {}),
         ...(metadata.category !== template.category
           ? { category: metadata.category }
@@ -200,16 +185,6 @@ export function TemplateOwnerPanel({
               setMetadata((current) => ({
                 ...current,
                 description: value,
-                shortDescription: isShortDescriptionManuallyEdited
-                  ? current.shortDescription
-                  : deriveShortDescriptionFromMarkdown(value),
-              }));
-            }}
-            onShortDescriptionChange={(value) => {
-              setIsShortDescriptionManuallyEdited(true);
-              setMetadata((current) => ({
-                ...current,
-                shortDescription: value,
               }));
             }}
             onPriceCentsChange={(value) => {

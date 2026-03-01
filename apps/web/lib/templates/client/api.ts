@@ -24,7 +24,6 @@ export type TemplateMutationDTO = {
   slug: string;
   title: string;
   description: string;
-  shortDescription: string;
   priceCents: number;
   currency: string;
   category: string;
@@ -74,7 +73,6 @@ type DeleteTemplateResponse = {
 export type CreateTemplatePayload = {
   title: string;
   slug: string;
-  shortDescription: string;
   description: string;
   category: string;
   priceCents: number;
@@ -83,7 +81,6 @@ export type CreateTemplatePayload = {
 
 export type UpdateTemplatePayload = {
   title?: string;
-  shortDescription?: string;
   description?: string;
   category?: string;
   priceCents?: number;

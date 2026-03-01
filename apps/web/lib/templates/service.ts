@@ -15,7 +15,7 @@ import {
   requireTemplateRecordById,
   requireTemplateRecordBySlug,
   type TemplateDTO,
-    type TemplateRecord,
+  type TemplateRecord,
 } from "./repository";
 import type {
   BlobUploadReferenceInput,
@@ -58,8 +58,6 @@ export type TemplateDownloadResult = {
   size: number | null;
 };
 
-const DEFAULT_CLI_TEMPLATE_SHORT_DESCRIPTION =
-  "Draft created via the claws-supply CLI. Update details before publishing.";
 const DEFAULT_CLI_TEMPLATE_DESCRIPTION =
   "This draft was created via the claws-supply CLI publish flow. Add your full template description, category context, and pricing details before publishing.";
 
@@ -249,7 +247,6 @@ export async function createTemplateDraft(
         slug: input.slug,
         title: input.title,
         description: normalizeTemplateDescription(input.description),
-        shortDescription: input.shortDescription,
         priceCents,
         currency: "USD",
         category: input.category,
@@ -303,15 +300,13 @@ export async function createCliTemplateDraft(options: {
         slug: options.slug,
         title: options.title,
         description: normalizeTemplateDescription(DEFAULT_CLI_TEMPLATE_DESCRIPTION),
-        shortDescription: DEFAULT_CLI_TEMPLATE_SHORT_DESCRIPTION,
         priceCents: 0,
         currency: "USD",
         category: defaultCategory,
         zipObjectKey: options.zipObjectKey,
         fileSizeBytes: options.fileSizeBytes,
         version: 1,
-        versionNotes:
-          "Initial artifact uploaded via the claws-supply CLI. Update release notes before publish.",
+        versionNotes: "Initial artifact uploaded via the claws-supply CLI.",
         publisherHash: options.publisherHash,
         archiveHash: options.archiveHash,
         status: "draft",
@@ -359,7 +354,6 @@ export async function updateTemplateMetadata(
     .update(template)
     .set({
       title: input.title ?? templateRow.title,
-      shortDescription: input.shortDescription ?? templateRow.shortDescription,
       description:
         input.description !== undefined
           ? normalizeTemplateDescription(input.description)

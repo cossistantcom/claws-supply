@@ -55,7 +55,7 @@ export function buildTemplateProductJsonLd(input: {
     "@context": SCHEMA_CONTEXT,
     "@type": "Product",
     name: detail.template.title,
-    description: detail.template.shortDescription,
+    description: detail.template.excerpt,
     sku: detail.template.id,
     category: categoryLabel ?? undefined,
     image: toJsonLdImage(detail.template.coverImageUrl),
