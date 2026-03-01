@@ -10,6 +10,7 @@ import {
 } from "fumadocs-ui/page";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import type { ComponentProps, ComponentType } from "react";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,16 @@ type DocsRouteProps = {
   params: Promise<{
     slug?: string[];
   }>;
+};
+
+type DocsPageContentData = {
+  body: ComponentType<{
+    components?: ReturnType<typeof getMDXComponents>;
+  }>;
+  toc?: ComponentProps<typeof DocsPage>["toc"];
+  full?: ComponentProps<typeof DocsPage>["full"];
+  title?: string;
+  description?: string;
 };
 
 export function generateStaticParams() {
@@ -55,19 +66,23 @@ export default async function DocsPageRoute({ params }: DocsRouteProps) {
     notFound();
   }
 
-  const MdxBody = page.data.body;
+  const pageData = page.data as DocsPageContentData;
+  const MdxBody = pageData.body;
 
   return (
     <DocsPage
-      toc={page.data.toc ?? []}
-      full={page.data.full}
+      toc={pageData.toc ?? []}
+      full={pageData.full}
+      tableOfContentPopover={{
+        enabled: false,
+      }}
       tableOfContent={{
         header: <></>,
-        component: <DocsRightSidebar tocItems={page.data.toc ?? []} />,
+        component: <DocsRightSidebar />,
       }}
     >
-      <DocsTitle className="mt-20">{page.data.title}</DocsTitle>
-      <DocsDescription>{page.data.description}</DocsDescription>
+      <DocsTitle className="mt-20">{pageData.title}</DocsTitle>
+      <DocsDescription>{pageData.description}</DocsDescription>
       <DocsBody className="min-h-screen">
         <MdxBody components={getMDXComponents()} />
       </DocsBody>

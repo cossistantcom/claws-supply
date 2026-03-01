@@ -14,9 +14,14 @@ const USERNAME_MIN_LENGTH = 3;
 const USERNAME_MAX_LENGTH = 30;
 const USERNAME_FALLBACK = "user";
 const DEFAULT_DEV_AUTH_URL = "http://localhost:3039";
-const X_CLIENT_ID = process.env.X_CLIENT_ID ?? process.env.TWITER_CLIENT_ID;
+const X_CLIENT_ID =
+  process.env.X_CLIENT_ID ??
+  process.env.TWITTER_CLIENT_ID ??
+  process.env.TWITER_CLIENT_ID;
 const X_CLIENT_SECRET =
-  process.env.X_CLIENT_SECRET ?? process.env.TWITER_CLIENT_SECRET;
+  process.env.X_CLIENT_SECRET ??
+  process.env.TWITTER_CLIENT_SECRET ??
+  process.env.TWITER_CLIENT_SECRET;
 const DEFAULT_CLI_CLIENT_ID = "claws-supply-cli";
 
 function resolveAuthBaseURL(): string | undefined {

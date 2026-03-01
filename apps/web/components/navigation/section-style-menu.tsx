@@ -12,12 +12,18 @@ export type SectionStyleMenuItem = {
 
 type SectionStyleMenuProps = {
   items: SectionStyleMenuItem[];
+  title?: string;
+  titleClassName?: string;
+  itemClassName?: string;
   footer?: React.ReactNode;
   className?: string;
 };
 
 export function SectionStyleMenu({
   items,
+  title,
+  titleClassName,
+  itemClassName,
   footer,
   className,
 }: SectionStyleMenuProps) {
@@ -26,12 +32,23 @@ export function SectionStyleMenu({
       <div className="flex-grow overflow-y-auto">
         <div className="space-y-4">
           <div className="space-y-2">
+            {title ? (
+              <p
+                className={cn(
+                  "px-2 text-[11px] tracking-wide text-muted-foreground",
+                  titleClassName,
+                )}
+              >
+                {title}
+              </p>
+            ) : null}
             {items.map((item) => (
               <Link href={item.href} key={item.key}>
                 <Button
                   variant="ghost"
                   className={cn(
                     "w-full justify-start text-sm",
+                    itemClassName,
                     item.active ? "bg-muted" : "",
                   )}
                 >

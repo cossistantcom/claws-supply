@@ -1,10 +1,13 @@
 import { SidebarAdStack } from "@/components/ads/sidebar-ad-stack";
-import { DocsTableOfContents } from "@/components/docs/docs-toc";
 import { Button } from "@/components/ui/button";
-import type { TOCItemType } from "fumadocs-core/toc";
 import Link from "next/link";
 
 const QUICK_ACTIONS = [
+  {
+    key: "sell-pricing",
+    label: "sell + pricing",
+    href: "/docs/sell-templates-pricing",
+  },
   {
     key: "publish-template",
     label: "publish a template",
@@ -22,18 +25,10 @@ const QUICK_ACTIONS = [
   },
 ];
 
-type DocsRightSidebarProps = {
-  tocItems: TOCItemType[];
-};
-
-export async function DocsRightSidebar({ tocItems }: DocsRightSidebarProps) {
+export async function DocsRightSidebar() {
   return (
     <div className="sticky top-40 hidden h-[calc(var(--fd-docs-height)-var(--fd-docs-row-1))] w-(--fd-toc-width) [grid-area:toc] flex-col pt-12 pb-2 pr-4 text-xs lg:flex">
       <div className="space-y-4 overflow-y-auto">
-        <section className="border border-border bg-background/70 p-3">
-          <DocsTableOfContents className="p-0 pt-0" toc={tocItems} variant="list" />
-        </section>
-
         <section className="border border-border bg-background/70 p-3">
           <p className="text-[11px] tracking-wide text-muted-foreground uppercase">
             Quick actions

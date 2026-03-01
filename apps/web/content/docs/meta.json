@@ -4,6 +4,7 @@
   "pages": [
     "index",
     "publish-template",
+    "sell-templates-pricing",
     "use-template",
     "safety",
     "verified-seller-stripe-connect"
