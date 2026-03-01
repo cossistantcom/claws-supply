@@ -28,7 +28,6 @@ export async function Menu() {
     <aside className="w-80 p-4 flex flex-col z-[9999]">
       <div className="flex-grow overflow-y-auto">
         <div className="space-y-4">
-          <UploadTemplateMenuCta />
           <div className="space-y-2">
             {sectionItems.map((section) => (
               <Link href={section.href} key={section.key}>
@@ -44,6 +43,7 @@ export async function Menu() {
               </Link>
             ))}
           </div>
+          <UploadTemplateMenuCta />
         </div>
       </div>
     </aside>

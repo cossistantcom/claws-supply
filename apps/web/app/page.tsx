@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import { AsciiPhoneShowcase } from "@/components/ascii-phone-showcase";
-import { AsciiClawsShowcase } from "@/components/claws-showcase";
+import { LandingCommandDemo } from "@/components/landing-command-demo";
+import { LobsterClawIcon } from "@/components/lobster-claw";
 import { OpenClawPageShell } from "@/components/openclaw-page-shell";
 import { TemplateCard } from "@/components/template-card";
 import { CATEGORIES } from "@/lib/categories";
@@ -44,22 +45,20 @@ export default async function Page() {
 
   return (
     <>
-      <div className="overflow-x-clip min-h-screen relative mt-40 px-6 md:px-0">
+      <div className="overflow-x-clip min-h-screen relative mt-20 px-6 md:px-0">
         <OpenClawPageShell contentClassName="w-full max-w-4xl space-y-10">
-          <div className="flex items-stretch gap-10">
-            <div className="2xl:block hidden aspect-square h-full w-full max-w-40 overflow-clip relative bg-primary/[0.03]">
-              <AsciiClawsShowcase />
-            </div>
-            <div className="flex-1 flex flex-col gap-4">
-              <h1 className="text-3xl sm:text-3xl md:text-4xl xl:text-5xl leading-[1.3] tracking-tight text-balance">
-                Explore and sell vetted OpenClaw templates.
-              </h1>
+          <div className="flex-1 flex flex-col gap-4">
+            <LobsterClawIcon className="size-13" />
+            <h1 className="text-3xl sm:text-3xl md:text-4xl xl:text-5xl leading-[1.3] tracking-tight text-balance">
+              Explore and sell vetted OpenClaw templates.
+            </h1>
 
-              <p className="text-sm sm:text-base text-muted-foreground max-w-xl leading-relaxed">
-                Discover trending Openclaw templates and deploy pre-configured,
-                production-ready OpenClaw AI agents faster.
-              </p>
-            </div>
+            <p className="text-sm sm:text-base text-muted-foreground max-w-xl leading-relaxed">
+              Discover trending Openclaw templates and deploy pre-configured,
+              production-ready OpenClaw AI agents faster.
+            </p>
+
+            <LandingCommandDemo />
           </div>
 
           <section className="space-y-12 pt-8 md:pt-12">
