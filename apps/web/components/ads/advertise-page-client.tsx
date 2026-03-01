@@ -102,13 +102,15 @@ export function AdvertisePageClient({ userId }: AdvertisePageClientProps) {
       {
         placement: "sidebar",
         title: "Sidebar",
-        description: "Persistent right-rail visibility across marketplace pages.",
+        description:
+          "Persistent right-rail visibility across marketplace pages.",
         monthlyPriceCents: pricing.sidebar,
       },
       {
         placement: "results",
         title: "Results",
-        description: "Sponsored cards injected in browsing flows with buyer intent.",
+        description:
+          "Sponsored cards injected in browsing flows with buyer intent.",
         monthlyPriceCents: pricing.results,
       },
       {
@@ -181,47 +183,45 @@ export function AdvertisePageClient({ userId }: AdvertisePageClientProps) {
 
   return (
     <div className="flex w-full flex-col gap-8">
-      <Card>
-        <CardHeader className="space-y-4">
-          <CardTitle className="text-3xl sm:text-4xl">Advertise on Claws.supply</CardTitle>
-          <CardDescription className="max-w-3xl text-sm leading-relaxed">
-            Reach high-intent OpenClaw buyers who are actively evaluating agent
-            templates, tools, and automation workflows. Your brand appears where
-            purchase decisions happen, not in low-intent traffic feeds.
-          </CardDescription>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="border border-border p-3">
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                Audience
-              </p>
-              <p className="text-sm">Builders and technical buyers</p>
-            </div>
-            <div className="border border-border p-3">
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                Intent
-              </p>
-              <p className="text-sm">Active template discovery sessions</p>
-            </div>
-            <div className="border border-border p-3">
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                Spots Left
-              </p>
-              <p className="text-sm">
-                {availabilityQuery.isPending
-                  ? "Loading..."
-                  : `${availability?.spotsLeft ?? 0}/${availability?.slotLimit ?? 30}`}
-              </p>
-            </div>
+      <div className="border-0 p-0 flex flex-col gap-4">
+        <h1 className="text-3xl sm:text-4xl">Advertise with us</h1>
+        <h3 className="max-w-3xl text-sm leading-relaxed">
+          Reach high-intent OpenClaw buyers who are actively evaluating agent
+          templates, tools, and automation workflows. Your brand appears where
+          purchase decisions happen, not in low-intent traffic feeds.
+        </h3>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="border border-border p-3">
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              Audience
+            </p>
+            <p className="text-sm">Builders and technical buyers</p>
           </div>
-        </CardHeader>
-      </Card>
+          <div className="border border-border p-3">
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              Intent
+            </p>
+            <p className="text-sm">Active template discovery sessions</p>
+          </div>
+          <div className="border border-border p-3">
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              Spots Left
+            </p>
+            <p className="text-sm">
+              {availabilityQuery.isPending
+                ? "Loading..."
+                : `${availability?.spotsLeft ?? 0}/${availability?.slotLimit ?? 30}`}
+            </p>
+          </div>
+        </div>
+      </div>
 
       <Card>
         <CardHeader>
           <CardTitle>Pricing</CardTitle>
           <CardDescription>
-            Monthly subscription. Cancel anytime; campaign visibility remains until
-            the end of the paid billing cycle.
+            Monthly subscription. Cancel anytime; campaign visibility remains
+            until the end of the paid billing cycle.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-3">
@@ -238,8 +238,12 @@ export function AdvertisePageClient({ userId }: AdvertisePageClientProps) {
               ].join(" ")}
             >
               <p className="text-sm">{option.title}</p>
-              <p className="mt-1 text-xl">{formatPrice(option.monthlyPriceCents)}/mo</p>
-              <p className="mt-2 text-xs text-muted-foreground">{option.description}</p>
+              <p className="mt-1 text-xl">
+                {formatPrice(option.monthlyPriceCents)}/mo
+              </p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                {option.description}
+              </p>
             </button>
           ))}
         </CardContent>
@@ -256,7 +260,10 @@ export function AdvertisePageClient({ userId }: AdvertisePageClientProps) {
           <CardContent>
             <form className="space-y-4" onSubmit={handleSubmit}>
               <div className="space-y-1">
-                <label className="text-xs uppercase tracking-wide" htmlFor="company-name">
+                <label
+                  className="text-xs uppercase tracking-wide"
+                  htmlFor="company-name"
+                >
                   Company name
                 </label>
                 <Input
@@ -269,7 +276,10 @@ export function AdvertisePageClient({ userId }: AdvertisePageClientProps) {
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs uppercase tracking-wide" htmlFor="website-url">
+                <label
+                  className="text-xs uppercase tracking-wide"
+                  htmlFor="website-url"
+                >
                   Website URL
                 </label>
                 <Input
@@ -284,7 +294,10 @@ export function AdvertisePageClient({ userId }: AdvertisePageClientProps) {
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs uppercase tracking-wide" htmlFor="short-description">
+                <label
+                  className="text-xs uppercase tracking-wide"
+                  htmlFor="short-description"
+                >
                   Short description
                 </label>
                 <Textarea
@@ -325,13 +338,18 @@ export function AdvertisePageClient({ userId }: AdvertisePageClientProps) {
                 <p className="text-xs text-destructive">{actionError}</p>
               ) : null}
               {actionMessage ? (
-                <p className="text-xs text-cossistant-orange">{actionMessage}</p>
+                <p className="text-xs text-cossistant-orange">
+                  {actionMessage}
+                </p>
               ) : null}
 
               <div className="flex justify-end">
                 <Button
                   type="submit"
-                  disabled={createCampaignMutation.isPending || logoUpload.status === "uploading"}
+                  disabled={
+                    createCampaignMutation.isPending ||
+                    logoUpload.status === "uploading"
+                  }
                 >
                   {createCampaignMutation.isPending ? (
                     <>
@@ -355,7 +373,11 @@ export function AdvertisePageClient({ userId }: AdvertisePageClientProps) {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button onClick={() => window.location.assign("/auth/sign-in?next=/advertise")}>
+            <Button
+              onClick={() =>
+                window.location.assign("/auth/sign-in?next=/advertise")
+              }
+            >
               Sign in
             </Button>
           </CardContent>
@@ -372,12 +394,15 @@ export function AdvertisePageClient({ userId }: AdvertisePageClientProps) {
           </CardHeader>
           <CardContent className="space-y-4">
             {campaignQuery.isPending ? (
-              <p className="text-xs text-muted-foreground">Loading campaign...</p>
+              <p className="text-xs text-muted-foreground">
+                Loading campaign...
+              </p>
             ) : campaign ? (
               <>
                 <div className="grid gap-2 text-xs sm:grid-cols-2">
                   <p>
-                    <span className="text-muted-foreground">Status:</span> {campaign.status}
+                    <span className="text-muted-foreground">Status:</span>{" "}
+                    {campaign.status}
                   </p>
                   <p>
                     <span className="text-muted-foreground">Placement:</span>{" "}
@@ -386,7 +411,9 @@ export function AdvertisePageClient({ userId }: AdvertisePageClientProps) {
                   <p>
                     <span className="text-muted-foreground">Period start:</span>{" "}
                     {campaign.currentPeriodStart
-                      ? new Date(campaign.currentPeriodStart).toLocaleDateString()
+                      ? new Date(
+                          campaign.currentPeriodStart,
+                        ).toLocaleDateString()
                       : "n/a"}
                   </p>
                   <p>

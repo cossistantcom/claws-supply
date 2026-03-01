@@ -60,6 +60,16 @@
   - Stripe ads webhook lifecycle sync shipped at `POST /api/stripe/webhooks`
   - Sponsored rendering shipped for sidebar and in-grid results cards
   - Legal updates shipped for advertising subscriptions/moderation in terms + policy pages
+- [x] DONE — Members community surfaces shipped:
+  - Public members directory at `/members` with server-rendered search (`q`) and pagination (`page`)
+  - Public member SEO profile pages at `/members/[username]` with verification checklist and published template grid
+  - Shared verification function centralized and reused across profile settings + template seller mapping
+  - Right sidebar community module added above ad block:
+    - `X people joined in the last 24 hours`
+    - latest 10 member avatars linking to member profiles
+  - Facehash avatar fallback reused for all public member surfaces
+  - `MEMBERS` top-nav link shipped
+  - Sitemap now includes `/members` + all `/members/{username}` pages
 
 ### Short Tech Notes (Implemented)
 
@@ -87,11 +97,13 @@
 - Read architecture decision: one shared template read service powers both SSR pages and API handlers; no server-side internal HTTP fetch layer.
 - Runtime DB decision: query/mutation paths use Drizzle query builder only (no raw `sql` fragments in runtime services/routes). Raw SQL remains limited to Drizzle schema constraints and migration files.
 - Download counter decision: increments use a Drizzle transaction with row lock (`FOR UPDATE`) and deterministic writeback.
+- Member verification decision: `isVerified` is centralized in a shared helper and computed from `(X linked) && (Stripe verified)` everywhere.
+- Member privacy decision: public member read paths only select safe fields (`id`, `username`, `name`, `bio`, `image`, verification flags, timestamps); email is never exposed.
 - Migration prerequisite: local/dev must run latest Drizzle migrations before app runtime (`bun run migrate`) so lifecycle columns like `template.status` exist.
 - Current gap snapshot:
   - Checkout/purchase routes + Stripe webhook purchase creation are still pending.
   - Review routes are still pending.
-  - Member directory/profile public APIs are still pending.
+  - Dedicated `/api/members` and `/api/members/[username]` endpoints are still pending (public pages currently read server-side directly).
   - Automated tests for lifecycle/read/blob/payment flows are still pending.
 
 ---
@@ -179,7 +191,7 @@ Better Auth already manages core auth fields (id, email, password hash, sessions
 - **Computed — isVerified:** true when BOTH Stripe is verified AND X account is linked
 - **Timestamps:** created, updated
 
-> Username must be unique and URL-safe (used in `/member/{username}` and `?ref={username}`).
+> Username must be unique and URL-safe (used in `/members/{username}` and `?ref={username}`).
 
 ### 4.2 Templates
 
@@ -560,11 +572,10 @@ app/
 │   └── template/
 │       └── [templateSlug]/
 │           └── page.tsx                        → /openclaw/template/{slug}       (Template detail)
-├── member/
-│   └── [username]/
-│       └── page.tsx                            → /member/{username}             (Member profile)
 ├── members/
-│   └── page.tsx                                → /members                       (Members directory)
+│   ├── page.tsx                                → /members                       (Members directory)
+│   └── [username]/
+│       └── page.tsx                            → /members/{username}            (Member profile)
 ├── dashboard/
 │   ├── page.tsx                                → /dashboard                     (My purchases)
 │   ├── templates/
@@ -620,14 +631,15 @@ app/
   - Store in cookie: `claws_ref_{templateSlug}={sellerUsername}` (90-day expiry)
   - At checkout, read cookie to determine sale type
 
-#### Member Profile (`/member/[username]`)
+#### Member Profile (`/members/[username]`)
 
 - **SEO title:** "{Display Name} (@{username}) — Claws.supply"
 - **Content:**
   - Avatar, display name, username, bio
-  - Link to X profile (if linked)
-  - Verified badge (if verified)
-  - "Joined {date}"
+  - Verified status badge (`VERIFIED` / `NOT VERIFIED`)
+  - Verification checklist:
+    - Verified twitter profile
+    - Verified identity via Stripe
   - Grid of their published templates
 - **Data:** Server-side. Query user by username, then their non-flagged templates.
 
@@ -635,9 +647,10 @@ app/
 
 - **SEO title:** "Community Members — Claws.supply"
 - **Content:**
-  - Platform stats: total members, total templates, total sellers
-  - Grid of recently joined members (paginated)
-  - Each card: avatar, name, verified badge, template count, join date
+  - Community headline + total member count + join CTA
+  - Search input (username/name)
+  - Grid of members (paginated)
+  - Each card: avatar (facehash fallback), name, username, bio preview, `VERIFIED` / `NOT VERIFIED`
 
 #### Dashboard — My Purchases (`/dashboard`)
 

@@ -17,11 +17,13 @@ import {
 import { CATEGORIES, isCategorySlug, type CategorySlug } from "@/lib/categories";
 import { db } from "@/lib/db";
 import { review, template, user } from "@/lib/db/schema";
+import { isUserVerified } from "@/lib/profile/verification";
 import { TemplateServiceError } from "./errors";
 import type {
   PublicTemplateCard,
   PublicTemplateDetail,
   PublicTemplateSeller,
+  SellerTemplateListQueryInput,
   TemplateListQueryInput,
   TemplateListResult,
   TemplateListSort,
@@ -161,7 +163,10 @@ function mapSeller(row: TemplateReadRow): PublicTemplateSeller {
     username: row.sellerUsername,
     displayName: row.sellerName,
     avatarUrl: row.sellerImage,
-    isVerified: row.sellerStripeVerified && Boolean(row.sellerXAccountId),
+    isVerified: isUserVerified({
+      hasVerifiedTwitterProfile: Boolean(row.sellerXAccountId),
+      hasVerifiedStripeIdentity: row.sellerStripeVerified,
+    }),
   };
 }
 
@@ -253,6 +258,44 @@ function normalizeListInput(input: TemplateListQueryInput): TemplateListQueryInp
   };
 }
 
+function normalizeSellerTemplateListInput(
+  input: SellerTemplateListQueryInput,
+): SellerTemplateListQueryInput {
+  return {
+    sellerId: input.sellerId?.trim() || undefined,
+    sellerUsername: input.sellerUsername?.trim().toLowerCase() || undefined,
+    sort: input.sort,
+    page: input.page,
+    limit: input.limit,
+  };
+}
+
+function buildSellerTemplateListWhere(
+  input: SellerTemplateListQueryInput,
+): SQL<unknown> {
+  const conditions = basePublishedVisibilityConditions();
+
+  if (input.sellerId) {
+    conditions.push(eq(template.sellerId, input.sellerId));
+  }
+
+  if (input.sellerUsername) {
+    conditions.push(eq(user.username, input.sellerUsername));
+  }
+
+  if (!input.sellerId && !input.sellerUsername) {
+    throw new TemplateServiceError(
+      "Seller ID or seller username is required to list published templates.",
+      {
+        code: "SELLER_IDENTIFIER_REQUIRED",
+        status: 400,
+      },
+    );
+  }
+
+  return and(...conditions)!;
+}
+
 export async function listPublishedTemplates(
   input: TemplateListQueryInput,
 ): Promise<TemplateListResult> {
@@ -269,6 +312,42 @@ export async function listPublishedTemplates(
     }),
   ]);
 
+  const totalPages = total === 0 ? 0 : Math.ceil(total / normalizedInput.limit);
+
+  return {
+    items: rows.map(mapPublicTemplateCard),
+    page: normalizedInput.page,
+    limit: normalizedInput.limit,
+    total,
+    totalPages,
+    hasNextPage: totalPages > 0 && normalizedInput.page < totalPages,
+    hasPreviousPage: normalizedInput.page > 1,
+  };
+}
+
+export async function listPublishedTemplatesBySeller(
+  input: SellerTemplateListQueryInput,
+): Promise<TemplateListResult> {
+  const normalizedInput = normalizeSellerTemplateListInput(input);
+  const whereClause = buildSellerTemplateListWhere(normalizedInput);
+  const offset = (normalizedInput.page - 1) * normalizedInput.limit;
+
+  const [countRows, rows] = await Promise.all([
+    db
+      .select({
+        total: count(template.id),
+      })
+      .from(template)
+      .innerJoin(user, eq(template.sellerId, user.id))
+      .where(whereClause),
+    listTemplateRows(whereClause, {
+      limit: normalizedInput.limit,
+      offset,
+      sort: normalizedInput.sort,
+    }),
+  ]);
+
+  const total = toNonNegativeInteger(countRows[0]?.total);
   const totalPages = total === 0 ? 0 : Math.ceil(total / normalizedInput.limit);
 
   return {
@@ -462,6 +541,14 @@ const listPublishedTemplatesCachedImpl = unstable_cache(
   },
 );
 
+const listPublishedTemplatesBySellerCachedImpl = unstable_cache(
+  async (input: SellerTemplateListQueryInput) => listPublishedTemplatesBySeller(input),
+  ["templates-list-published-by-seller"],
+  {
+    revalidate: READ_CACHE_REVALIDATE_SECONDS,
+  },
+);
+
 const getPublishedTemplateBySlugCachedImpl = unstable_cache(
   async (slug: string) => getPublishedTemplateBySlug(slug),
   ["templates-detail-published"],
@@ -499,6 +586,14 @@ export async function listPublishedTemplatesCached(
   input: TemplateListQueryInput,
 ): Promise<TemplateListResult> {
   return listPublishedTemplatesCachedImpl(normalizeListInput(input));
+}
+
+export async function listPublishedTemplatesBySellerCached(
+  input: SellerTemplateListQueryInput,
+): Promise<TemplateListResult> {
+  return listPublishedTemplatesBySellerCachedImpl(
+    normalizeSellerTemplateListInput(input),
+  );
 }
 
 export async function getPublishedTemplateBySlugCached(

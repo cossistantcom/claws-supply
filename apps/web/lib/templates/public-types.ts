@@ -11,6 +11,14 @@ export type TemplateListQueryInput = {
   search?: string;
 };
 
+export type SellerTemplateListQueryInput = {
+  sellerId?: string;
+  sellerUsername?: string;
+  sort: TemplateListSort;
+  page: number;
+  limit: number;
+};
+
 export type PublicTemplateSeller = {
   id: string;
   username: string;

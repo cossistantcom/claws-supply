@@ -42,17 +42,17 @@ export function SidebarEmptySlot({
   return (
     <Link
       href={href}
-      className="group flex min-h-20 w-full items-center gap-3 border border-dashed border-border bg-primary/5 px-3 py-3 text-xs transition-colors hover:border-cossistant-orange/40"
+      className="group flex min-h-20 aspect-video flex-col justify-center w-full items-center gap-3 border border-dashed border-border bg-primary/5 px-3 py-3 text-xs transition-colors hover:border-cossistant-orange/40"
     >
       <span className="inline-flex size-8 items-center justify-center border border-border bg-background transition-colors group-hover:border-cossistant-orange/40">
         <Megaphone className="size-4 text-cossistant-orange" />
       </span>
-      <span className="leading-tight">
+      <span className="leading-tight text-center mt-6">
         <span className="block text-sm uppercase tracking-wide">
           Advertise here
         </span>
         <span className="block text-[11px] text-muted-foreground">
-          Get your brand in front of high-intent buyers.
+          Get your brand in front of the best power users of the internet.
         </span>
       </span>
     </Link>

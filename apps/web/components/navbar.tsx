@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CossistantAvatarFallback } from "@/components/profile/cossistant-avatar-fallback";
 import { Button } from "@/components/ui/button";
+import { membersPath } from "@/lib/routes";
 import { ProgressiveBlur } from "./progresive-blur";
 import { cn } from "@/lib/utils";
 import { LobsterClawIcon } from "./lobster-claw";
@@ -72,6 +73,12 @@ export function Navbar({ user }: NavbarProps) {
             </Link>
           </div>
           <div className="flex items-center gap-4">
+            <Link
+              className="text-xs tracking-wider hover:opacity-80 transition-opacity"
+              href={membersPath()}
+            >
+              MEMBERS
+            </Link>
             <Link
               className="text-xs tracking-wider hover:opacity-80 transition-opacity"
               href="/advertise"

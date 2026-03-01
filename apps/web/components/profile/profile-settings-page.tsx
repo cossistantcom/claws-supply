@@ -32,6 +32,7 @@ import {
   useRefreshStripeStatusMutation,
   useUpdateProfileMutation,
 } from "@/lib/profile/query";
+import { isUserVerified } from "@/lib/profile/verification";
 
 function getErrorMessage(error: unknown, fallback: string): string {
   if (error && typeof error === "object" && "message" in error) {
@@ -81,7 +82,10 @@ export function ProfileSettingsPage() {
       return false;
     }
 
-    return profile.x.linked && profile.stripe.verified;
+    return isUserVerified({
+      hasVerifiedTwitterProfile: profile.x.linked,
+      hasVerifiedStripeIdentity: profile.stripe.verified,
+    });
   }, [profile]);
 
   const hasProfileChanges = useMemo(() => {
