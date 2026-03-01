@@ -25,6 +25,13 @@ function resolveErrorMessage(error: unknown): string {
   return "Unable to sign in right now.";
 }
 
+function buildXSyncCallbackUrl(nextPath: string): string {
+  const params = new URLSearchParams({
+    next: nextPath,
+  });
+  return `/api/profile/x/complete?${params.toString()}`;
+}
+
 export function SignInForm({ callbackURL }: SignInFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -64,7 +71,7 @@ export function SignInForm({ callbackURL }: SignInFormProps) {
 
     const { error } = await authClient.signIn.social({
       provider: "twitter",
-      callbackURL,
+      callbackURL: buildXSyncCallbackUrl(callbackURL),
     });
 
     if (error) {

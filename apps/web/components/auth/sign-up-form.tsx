@@ -25,6 +25,13 @@ function resolveErrorMessage(error: unknown): string {
   return "Unable to create your account right now.";
 }
 
+function buildXSyncCallbackUrl(nextPath: string): string {
+  const params = new URLSearchParams({
+    next: nextPath,
+  });
+  return `/api/profile/x/complete?${params.toString()}`;
+}
+
 export function SignUpForm({ callbackURL }: SignUpFormProps) {
   const router = useRouter();
   const [name, setName] = useState("");
@@ -64,7 +71,7 @@ export function SignUpForm({ callbackURL }: SignUpFormProps) {
 
     const { error } = await authClient.signIn.social({
       provider: "twitter",
-      callbackURL,
+      callbackURL: buildXSyncCallbackUrl(callbackURL),
     });
 
     if (error) {

@@ -25,6 +25,12 @@ type CommunitySidebarProps = {
 type TemplateCompactSidebarProps = {
   variant: "templateCompact";
   seller: SidebarSeller;
+  template: {
+    slug: string;
+    status: SidebarTemplateStatus;
+    version: number | null;
+  };
+  canManageTemplate: boolean;
 };
 
 type TemplateManageSidebarProps = {
@@ -54,6 +60,7 @@ function formatDate(value: string) {
 export async function ExtraSidebar(props: ExtraSidebarProps = { variant: "community" }) {
   if (props.variant === "templateCompact") {
     const seller = props.seller;
+    const template = props.template;
 
     return (
       <div className="flex w-80 flex-col gap-4 pr-4 text-xs">
@@ -61,7 +68,7 @@ export async function ExtraSidebar(props: ExtraSidebarProps = { variant: "commun
           <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
             Template Seller
           </p>
-          <div className="mt-3">
+          <div className="mt-3 space-y-3">
             <ProfileSellerIdentity
               name={seller.displayName}
               username={seller.username}
@@ -69,6 +76,29 @@ export async function ExtraSidebar(props: ExtraSidebarProps = { variant: "commun
               isVerified={seller.isVerified}
               memberHref={memberPath(seller.username)}
             />
+
+            <div className="space-y-2 border border-border p-3 text-[11px]">
+              <p className="text-xs uppercase tracking-wide text-foreground">
+                Version & Status
+              </p>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-muted-foreground">Version</span>
+                <span>{template.version ? `v${template.version}` : "No version yet"}</span>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-muted-foreground">Status</span>
+                <span className="uppercase">{template.status}</span>
+              </div>
+            </div>
+
+            {props.canManageTemplate ? (
+              <Link
+                href={templateEditPath(template.slug)}
+                className="inline-flex w-full justify-center border border-border px-3 py-2 text-xs uppercase tracking-wide hover:border-cossistant-orange/40"
+              >
+                Edit template
+              </Link>
+            ) : null}
           </div>
         </section>
       </div>

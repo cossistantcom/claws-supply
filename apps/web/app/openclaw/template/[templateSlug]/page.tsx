@@ -10,7 +10,6 @@ import { getCategoryBySlug } from "@/lib/categories";
 import {
   categoryPath,
   discoveryPath,
-  templateEditPath,
   templatePath,
 } from "@/lib/routes";
 import { absoluteUrl, buildSeoMetadata } from "@/lib/seo";
@@ -112,6 +111,7 @@ export default async function TemplateDetailPage({ params }: TemplatePageProps) 
 
   return (
     <OpenClawPageShell
+      contentClassName="w-full max-w-4xl space-y-10"
       rightSidebar={(
         <ExtraSidebar
           variant="templateCompact"
@@ -121,6 +121,12 @@ export default async function TemplateDetailPage({ params }: TemplatePageProps) 
             avatarUrl: detail.seller.avatarUrl,
             isVerified: detail.seller.isVerified,
           }}
+          template={{
+            slug: detail.template.slug,
+            status: templateRow.status,
+            version: detail.template.version,
+          }}
+          canManageTemplate={canManageTemplate}
         />
       )}
     >
@@ -147,7 +153,7 @@ export default async function TemplateDetailPage({ params }: TemplatePageProps) 
 
         <h1 className="text-3xl sm:text-4xl">{detail.template.title}</h1>
 
-        <div className="flex flex-wrap items-center gap-6 text-lg sm:text-xl">
+        <div className="flex flex-wrap items-center gap-10 sm:gap-14 text-lg sm:text-xl">
           <div>
             <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Price</p>
             <p>{formatPrice(detail.template.priceCents, detail.template.currency)}</p>
@@ -175,11 +181,6 @@ export default async function TemplateDetailPage({ params }: TemplatePageProps) 
         ) : null}
 
         <div className="flex flex-wrap items-center gap-4 text-xs">
-          {canManageTemplate ? (
-            <Link className="hover:underline" href={templateEditPath(detail.template.slug)}>
-              Edit template
-            </Link>
-          ) : null}
           {category ? (
             <Link className="hover:underline" href={categoryPath(category.slug)}>
               Browse {category.label}
