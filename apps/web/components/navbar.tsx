@@ -8,6 +8,7 @@ import { CossistantAvatarFallback } from "@/components/profile/cossistant-avatar
 import { Button } from "@/components/ui/button";
 import { ProgressiveBlur } from "./progresive-blur";
 import { cn } from "@/lib/utils";
+import { LobsterClawIcon } from "./lobster-claw";
 
 type NavbarUser = {
   name?: string | null;
@@ -63,9 +64,10 @@ export function Navbar({ user }: NavbarProps) {
         <div className="mx-auto px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link
-              className="font-pixel text-sm tracking-wider uppercase hover:opacity-80 transition-opacity"
+              className="font-pixel text-sm flex items-center gap-2 tracking-wider uppercase hover:opacity-80 transition-opacity"
               href="/"
             >
+              <LobsterClawIcon className="size-8" />
               claws.supply
             </Link>
           </div>
@@ -85,9 +87,15 @@ export function Navbar({ user }: NavbarProps) {
               >
                 <Avatar className="size-8 overflow-hidden border border-border bg-muted">
                   {user?.image ? (
-                    <AvatarImage src={user.image} alt={`${avatarName} avatar`} />
+                    <AvatarImage
+                      src={user.image}
+                      alt={`${avatarName} avatar`}
+                    />
                   ) : null}
-                  <CossistantAvatarFallback className="text-black" name={avatarName} />
+                  <CossistantAvatarFallback
+                    className="text-black"
+                    name={avatarName}
+                  />
                 </Avatar>
               </Button>
             ) : (

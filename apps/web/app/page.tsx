@@ -48,7 +48,7 @@ export default async function Page() {
       <div className="overflow-x-clip min-h-screen relative mt-20 px-6 md:px-0">
         <OpenClawPageShell contentClassName="w-full max-w-4xl space-y-10">
           <div className="flex-1 flex flex-col gap-4">
-            <LobsterClawIcon className="size-13" />
+            <LobsterClawIcon className="size-20" />
             <h1 className="text-3xl sm:text-3xl md:text-4xl xl:text-5xl leading-[1.3] tracking-tight text-balance">
               Explore and sell vetted OpenClaw templates.
             </h1>

@@ -3,12 +3,14 @@ import { cn } from "@/lib/utils";
 
 export function LobsterClawIcon({ className }: { className?: string }) {
   const uid = useId().replace(/:/g, "");
-  const packageBackGradientId = `${uid}-package-back-gradient`;
-  const packageSideGradientId = `${uid}-package-side-gradient`;
-  const packageFloorGradientId = `${uid}-package-floor-gradient`;
-  const packageFrontGradientId = `${uid}-package-front-gradient`;
-  const packageEdgeGradientId = `${uid}-package-edge-gradient`;
-  const packageShadowFilterId = `${uid}-package-shadow-filter`;
+  const folderBackGradientId = `${uid}-folder-back-gradient`;
+  const folderPocketGradientId = `${uid}-folder-pocket-gradient`;
+  const folderFlapGradientId = `${uid}-folder-flap-gradient`;
+  const folderEdgeGradientId = `${uid}-folder-edge-gradient`;
+  const folderShadowFilterId = `${uid}-folder-shadow-filter`;
+  const zipTrackGradientId = `${uid}-zip-track-gradient`;
+  const zipTeethGradientId = `${uid}-zip-teeth-gradient`;
+  const zipPullGradientId = `${uid}-zip-pull-gradient`;
   const bodyGradientId = `${uid}-lobster-body-gradient`;
   const bodyHighlightId = `${uid}-lobster-body-highlight`;
   const bodyRimId = `${uid}-lobster-body-rim`;
@@ -27,66 +29,16 @@ export function LobsterClawIcon({ className }: { className?: string }) {
       aria-hidden="true"
       focusable="false"
     >
-      <g filter={`url(#${packageShadowFilterId})`}>
+      <g filter={`url(#${folderShadowFilterId})`}>
         <path
-          d="M24 34 L60 18 L96 34 L96 86 L24 86 Z"
-          fill={`url(#${packageBackGradientId})`}
-          stroke={`url(#${packageEdgeGradientId})`}
+          d="M16 54 H44 L50 48 H70 V54 H116 V118 H16 Z"
+          fill={`url(#${folderBackGradientId})`}
+          stroke={`url(#${folderEdgeGradientId})`}
           strokeWidth={1.1}
-          opacity={0.96}
-        />
-        <path
-          d="M24 34 L12 42 L12 94 L24 86 Z"
-          fill={`url(#${packageSideGradientId})`}
-          stroke={`url(#${packageEdgeGradientId})`}
-          strokeWidth={1.1}
-          opacity={0.95}
-        />
-        <path
-          d="M96 34 L108 42 L108 94 L96 86 Z"
-          fill={`url(#${packageSideGradientId})`}
-          stroke={`url(#${packageEdgeGradientId})`}
-          strokeWidth={1.1}
-          opacity={0.95}
-        />
-        <path
-          d="M24 86 L60 98 L96 86 L60 74 Z"
-          fill={`url(#${packageFloorGradientId})`}
-          stroke={`url(#${packageEdgeGradientId})`}
-          strokeWidth={1.1}
-          opacity={0.96}
-        />
-        <path
-          d="M24 34 L60 18 L96 34"
-          fill="none"
-          stroke={`url(#${packageEdgeGradientId})`}
-          strokeWidth={1.1}
-          opacity={0.6}
-        />
-        <path
-          d="M60 74 L60 98"
-          fill="none"
-          stroke="color-mix(in srgb, var(--cossistant-orange) 32%, black)"
-          strokeWidth={0.9}
-          opacity={0.65}
-        />
-        <path
-          d="M24 86 L12 94"
-          fill="none"
-          stroke="color-mix(in srgb, var(--cossistant-orange) 32%, black)"
-          strokeWidth={0.9}
-          opacity={0.65}
-        />
-        <path
-          d="M96 86 L108 94"
-          fill="none"
-          stroke="color-mix(in srgb, var(--cossistant-orange) 32%, black)"
-          strokeWidth={0.9}
-          opacity={0.65}
         />
       </g>
 
-      <g transform="translate(15 13) scale(0.75)">
+      <g transform="translate(16 14) scale(0.84)">
         <g filter={`url(#${glowFilterId})`}>
           <path
             d="M60 10 C30 10 15 35 15 55 C15 75 30 95 45 100 L45 110 L55 110 L55 100 C55 100 60 102 65 100 L65 110 L75 110 L75 100 C90 95 105 75 105 55 C105 35 90 10 60 10Z"
@@ -192,146 +144,196 @@ export function LobsterClawIcon({ className }: { className?: string }) {
       </g>
 
       <path
-        d="M12 94 L60 110 L108 94 L96 86 L60 98 L24 86 Z"
-        fill={`url(#${packageFrontGradientId})`}
-        stroke={`url(#${packageEdgeGradientId})`}
+        d="M20 68 H112 V118 H20 Z"
+        fill={`url(#${folderPocketGradientId})`}
+        stroke={`url(#${folderEdgeGradientId})`}
+        strokeWidth={1}
+      />
+      <path
+        d="M16 54 H116 V66 Q66 72 16 66 Z"
+        fill={`url(#${folderFlapGradientId})`}
+        stroke={`url(#${folderEdgeGradientId})`}
         strokeWidth={1.1}
-        opacity={0.98}
+      />
+
+      <path
+        d="M22 63 Q66 69 110 63"
+        fill="none"
+        stroke={`url(#${zipTrackGradientId})`}
+        strokeWidth={2}
+        strokeLinecap="round"
       />
       <path
-        d="M24 86 L60 98 L96 86"
+        d="M22 63 Q66 69 110 63"
         fill="none"
-        stroke="color-mix(in srgb, var(--cossistant-orange) 32%, black)"
+        stroke={`url(#${zipTeethGradientId})`}
+        strokeWidth={1.35}
+        strokeDasharray="1.3 2.6"
+        strokeLinecap="round"
+      />
+      <circle
+        cx="109"
+        cy="63"
+        r="2.2"
+        fill="none"
+        stroke={`url(#${zipPullGradientId})`}
+        strokeWidth={1.2}
+      />
+      <path
+        d="M107.4 64.8 H110.6 A2.2 2.2 0 0 1 112.8 67 V69.4 H107.4 Z"
+        fill={`url(#${zipPullGradientId})`}
+        stroke={`url(#${zipTrackGradientId})`}
         strokeWidth={0.9}
-        opacity={0.65}
-      />
-      <path
-        d="M60 98 L60 110"
-        fill="none"
-        stroke="color-mix(in srgb, var(--cossistant-orange) 32%, black)"
-        strokeWidth={0.9}
-        opacity={0.65}
-      />
-      <path
-        d="M12 94 L60 110 L108 94"
-        fill="none"
-        stroke={`url(#${packageEdgeGradientId})`}
-        strokeWidth={1.1}
-        opacity={0.6}
       />
 
       <defs>
         <linearGradient
-          id={packageBackGradientId}
-          x1="24"
-          y1="18"
-          x2="96"
-          y2="86"
+          id={folderBackGradientId}
+          x1="16"
+          y1="48"
+          x2="116"
+          y2="118"
           gradientUnits="userSpaceOnUse"
         >
           <stop
             offset="0%"
-            stopColor="color-mix(in srgb, var(--cossistant-orange) 18%, black)"
+            stopColor="color-mix(in srgb, var(--cossistant-orange) 17%, black)"
           />
           <stop
             offset="100%"
-            stopColor="color-mix(in srgb, var(--cossistant-orange) 28%, black)"
+            stopColor="color-mix(in srgb, var(--cossistant-orange) 22%, black)"
           />
         </linearGradient>
 
         <linearGradient
-          id={packageSideGradientId}
-          x1="10"
-          y1="40"
+          id={folderPocketGradientId}
+          x1="20"
+          y1="68"
+          x2="112"
+          y2="118"
+          gradientUnits="userSpaceOnUse"
+        >
+          <stop
+            offset="0%"
+            stopColor="color-mix(in srgb, var(--cossistant-orange) 19%, black)"
+          />
+          <stop
+            offset="100%"
+            stopColor="color-mix(in srgb, var(--cossistant-orange) 23%, black)"
+          />
+        </linearGradient>
+
+        <linearGradient
+          id={folderFlapGradientId}
+          x1="16"
+          y1="54"
+          x2="116"
+          y2="72"
+          gradientUnits="userSpaceOnUse"
+        >
+          <stop
+            offset="0%"
+            stopColor="color-mix(in srgb, var(--cossistant-orange) 20%, black)"
+          />
+          <stop
+            offset="100%"
+            stopColor="color-mix(in srgb, var(--cossistant-orange) 24%, black)"
+          />
+        </linearGradient>
+
+        <linearGradient
+          id={folderEdgeGradientId}
+          x1="16"
+          y1="48"
+          x2="116"
+          y2="118"
+          gradientUnits="userSpaceOnUse"
+        >
+          <stop
+            offset="0%"
+            stopColor="color-mix(in srgb, var(--cossistant-orange) 30%, white)"
+          />
+          <stop
+            offset="100%"
+            stopColor="color-mix(in srgb, var(--cossistant-orange) 24%, black)"
+          />
+        </linearGradient>
+
+        <linearGradient
+          id={zipTrackGradientId}
+          x1="22"
+          y1="63"
           x2="110"
-          y2="94"
+          y2="63"
           gradientUnits="userSpaceOnUse"
         >
           <stop
             offset="0%"
-            stopColor="color-mix(in srgb, var(--cossistant-orange) 18%, black)"
+            stopColor="color-mix(in srgb, var(--cossistant-orange) 46%, black)"
           />
           <stop
             offset="100%"
-            stopColor="color-mix(in srgb, var(--cossistant-orange) 28%, black)"
-          />
-        </linearGradient>
-
-        <radialGradient
-          id={packageFloorGradientId}
-          cx="0"
-          cy="0"
-          r="1"
-          gradientUnits="userSpaceOnUse"
-          gradientTransform="translate(60 84) rotate(0) scale(46 17)"
-        >
-          <stop
-            offset="0%"
-            stopColor="color-mix(in srgb, var(--cossistant-orange) 40%, black)"
-          />
-          <stop
-            offset="100%"
-            stopColor="color-mix(in srgb, var(--cossistant-orange) 28%, black)"
-          />
-        </radialGradient>
-
-        <linearGradient
-          id={packageFrontGradientId}
-          x1="60"
-          y1="86"
-          x2="60"
-          y2="110"
-          gradientUnits="userSpaceOnUse"
-        >
-          <stop
-            offset="0%"
-            stopColor="color-mix(in srgb, var(--cossistant-orange) 28%, black)"
-          />
-          <stop
-            offset="100%"
-            stopColor="color-mix(in srgb, var(--cossistant-orange) 40%, black)"
+            stopColor="color-mix(in srgb, var(--cossistant-orange) 58%, black)"
           />
         </linearGradient>
 
         <linearGradient
-          id={packageEdgeGradientId}
-          x1="12"
-          y1="20"
-          x2="108"
-          y2="110"
+          id={zipTeethGradientId}
+          x1="22"
+          y1="63"
+          x2="110"
+          y2="63"
           gradientUnits="userSpaceOnUse"
         >
           <stop
             offset="0%"
-            stopColor="color-mix(in srgb, var(--cossistant-orange) 62%, white)"
+            stopColor="color-mix(in srgb, var(--cossistant-orange) 76%, white)"
           />
           <stop
             offset="100%"
-            stopColor="color-mix(in srgb, var(--cossistant-orange) 32%, black)"
+            stopColor="color-mix(in srgb, var(--cossistant-orange) 64%, white)"
+          />
+        </linearGradient>
+
+        <linearGradient
+          id={zipPullGradientId}
+          x1="107"
+          y1="62"
+          x2="113"
+          y2="70"
+          gradientUnits="userSpaceOnUse"
+        >
+          <stop
+            offset="0%"
+            stopColor="color-mix(in srgb, var(--cossistant-orange) 76%, white)"
+          />
+          <stop
+            offset="100%"
+            stopColor="color-mix(in srgb, var(--cossistant-orange) 46%, black)"
           />
         </linearGradient>
 
         <filter
-          id={packageShadowFilterId}
-          x="-20%"
-          y="-20%"
-          width="140%"
-          height="146%"
+          id={folderShadowFilterId}
+          x="-18%"
+          y="-16%"
+          width="136%"
+          height="140%"
           colorInterpolationFilters="sRGB"
         >
           <feDropShadow
             dx="0"
-            dy="0.7"
+            dy="0.6"
             stdDeviation="0.9"
-            floodColor="color-mix(in srgb, var(--cossistant-orange) 28%, black)"
-            floodOpacity="0.22"
+            floodColor="color-mix(in srgb, var(--cossistant-orange) 20%, black)"
+            floodOpacity="0.2"
           />
           <feDropShadow
             dx="0"
             dy="0"
-            stdDeviation="2.0"
-            floodColor="color-mix(in srgb, var(--cossistant-orange) 18%, black)"
-            floodOpacity="0.1"
+            stdDeviation="1.8"
+            floodColor="color-mix(in srgb, var(--cossistant-orange) 12%, black)"
+            floodOpacity="0.08"
           />
         </filter>
 
