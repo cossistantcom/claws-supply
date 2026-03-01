@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { LegalPageLayout } from "@/components/legal-page-layout";
+import { buildSeoMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildSeoMetadata({
   title: "Terms of Service - Claws supply",
   description:
     "Terms and conditions for using Claws supply's OpenClaw template marketplace.",
-};
+  path: "/terms",
+});
 
 const sections = [
   {

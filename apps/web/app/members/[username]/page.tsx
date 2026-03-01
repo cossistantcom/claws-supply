@@ -6,7 +6,8 @@ import { OpenClawPageShell } from "@/components/openclaw-page-shell";
 import { TemplateFeedGrid } from "@/components/template-feed-grid";
 import { getPublicMemberByUsernameCached } from "@/lib/members/read-service";
 import { memberPath, membersPath } from "@/lib/routes";
-import { buildSeoMetadata } from "@/lib/seo";
+import { absoluteUrl, buildSeoMetadata } from "@/lib/seo";
+import { buildMemberPersonJsonLd, serializeJsonLd } from "@/lib/seo/jsonld";
 import { listPublishedTemplatesBySellerCached } from "@/lib/templates/read-service";
 
 export const dynamic = "force-dynamic";
@@ -48,6 +49,7 @@ export async function generateMetadata({
     title: `${member.name} (@${member.username}) — Members — Claws.supply`,
     description: getMemberDescription(member),
     path: memberPath(member.username),
+    ogType: "profile",
   });
 }
 
@@ -64,6 +66,11 @@ export default async function MemberProfilePage({ params }: MemberPageProps) {
     sort: "newest",
     page: 1,
     limit: MEMBER_TEMPLATE_LIMIT,
+  });
+  const memberUrl = absoluteUrl(memberPath(member.username));
+  const personJsonLd = buildMemberPersonJsonLd({
+    member,
+    memberUrl,
   });
 
   const verificationChecklist = [
@@ -82,6 +89,10 @@ export default async function MemberProfilePage({ params }: MemberPageProps) {
   return (
     <main className="min-h-screen px-6 pb-16 pt-24 md:px-0">
       <OpenClawPageShell contentClassName="w-full max-w-4xl space-y-8">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: serializeJsonLd(personJsonLd) }}
+        />
         <header className="space-y-4 border-b border-border pb-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="space-y-3">

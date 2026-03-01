@@ -1,5 +1,14 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { OpenClawPageShell } from "@/components/openclaw-page-shell";
+import { buildSeoMetadata } from "@/lib/seo";
+
+export const metadata: Metadata = buildSeoMetadata({
+  title: "Publish OpenClaw Templates via CLI — Claws.supply",
+  description:
+    "Step-by-step CLI publishing flow for OpenClaw templates with auth, build, and publish commands.",
+  path: "/openclaw/templates/publish-via-cli",
+});
 
 export default function PublishViaCliPage() {
   return (

@@ -3,7 +3,7 @@ import { TemplateFeedGrid } from "@/components/template-feed-grid";
 import { listRenderableResultsAds } from "@/lib/ads/read-service";
 import { getDiscoveryBySlug } from "@/lib/categories";
 import { discoveryPath } from "@/lib/routes";
-import { buildSeoMetadata } from "@/lib/seo";
+import { buildSeoMetadata, hasAnySearchParams } from "@/lib/seo";
 import { parseTemplateListQueryFromSearchParams } from "@/lib/templates/read-schemas";
 import { listPublishedTemplatesCached } from "@/lib/templates/read-service";
 import type { TemplateListQueryInput } from "@/lib/templates/public-types";
@@ -25,14 +25,6 @@ type DiscoveryPageProps = {
   searchParams: Promise<DiscoverySearchParams>;
 };
 
-function getFirstValue(value: string | string[] | undefined) {
-  if (Array.isArray(value)) {
-    return value[0];
-  }
-
-  return value;
-}
-
 function parseDiscoveryQuery(
   searchParams: DiscoverySearchParams,
 ): TemplateListQueryInput {
@@ -52,18 +44,6 @@ function parseDiscoveryQuery(
   }
 }
 
-function isParamHeavyVariant(
-  searchParams: DiscoverySearchParams,
-  query: TemplateListQueryInput,
-) {
-  const hasSearch = Boolean(query.search);
-  const hasPageBeyondFirst = query.page > 1;
-  const rawSort = getFirstValue(searchParams.sort);
-  const hasNonDefaultSort = rawSort !== undefined && rawSort !== "popular";
-
-  return hasSearch || hasPageBeyondFirst || hasNonDefaultSort;
-}
-
 export async function generateMetadata({
   searchParams,
 }: DiscoveryPageProps): Promise<Metadata> {
@@ -78,13 +58,11 @@ export async function generateMetadata({
     });
   }
 
-  const query = parseDiscoveryQuery(rawSearchParams);
-
   return buildSeoMetadata({
     title: DISCOVERY.seoTitle,
     description: DISCOVERY.seoDescription,
     path: discoveryPath(DISCOVERY.slug),
-    noindex: isParamHeavyVariant(rawSearchParams, query),
+    noindex: hasAnySearchParams(rawSearchParams),
   });
 }
 

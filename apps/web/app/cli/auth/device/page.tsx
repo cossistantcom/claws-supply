@@ -1,5 +1,7 @@
+import type { Metadata } from "next";
 import { CliDeviceAuthPage } from "@/components/auth/cli-device-auth-page";
 import { getSessionFromNextHeaders } from "@/lib/auth/session";
+import { buildNoindexMetadata } from "@/lib/seo";
 import { redirect } from "next/navigation";
 
 type DeviceAuthPageProps = {
@@ -7,6 +9,13 @@ type DeviceAuthPageProps = {
     user_code?: string;
   }>;
 };
+
+export const metadata: Metadata = buildNoindexMetadata({
+  title: "Authorize CLI Device — Claws.supply",
+  description:
+    "Approve or deny Claws.supply CLI device authentication requests from your account.",
+  path: "/cli/auth/device",
+});
 
 export default async function CliDeviceAuthRoute({ searchParams }: DeviceAuthPageProps) {
   const params = await searchParams;

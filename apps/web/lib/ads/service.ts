@@ -362,12 +362,10 @@ async function upsertPendingCampaign(options: {
   }
 }
 
-function requireStripeWebhookSecret() {
-  const secret =
-    process.env.STRIPE_ADS_WEBHOOK_SECRET ?? process.env.STRIPE_WEBHOOK_SECRET;
-
+function requireStripePlatformWebhookSecret() {
+  const secret = process.env.STRIPE_PLATFORM_WEBHOOK_SECRET;
   if (!secret || secret.trim().length === 0) {
-    throw new AdsServiceError("Missing Stripe webhook secret.", {
+    throw new AdsServiceError("Missing Stripe platform webhook secret.", {
       code: "WEBHOOK_SECRET_MISSING",
       status: 500,
     });
@@ -746,7 +744,10 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
     .where(eq(adCampaign.stripeSubscriptionId, subscriptionId));
 }
 
-export function parseStripeWebhookEvent(rawBody: string, signature: string | null) {
+export function parsePlatformStripeWebhookEvent(
+  rawBody: string,
+  signature: string | null,
+) {
   if (!signature) {
     throw new AdsServiceError("Missing Stripe signature.", {
       code: "WEBHOOK_SIGNATURE_MISSING",
@@ -760,7 +761,7 @@ export function parseStripeWebhookEvent(rawBody: string, signature: string | nul
     return stripe.webhooks.constructEvent(
       rawBody,
       signature,
-      requireStripeWebhookSecret(),
+      requireStripePlatformWebhookSecret(),
     );
   } catch {
     throw new AdsServiceError("Invalid Stripe webhook signature.", {
@@ -770,7 +771,7 @@ export function parseStripeWebhookEvent(rawBody: string, signature: string | nul
   }
 }
 
-export async function processStripeWebhookEvent(event: Stripe.Event) {
+export async function processPlatformStripeWebhookEvent(event: Stripe.Event) {
   const shouldProcess = await markWebhookEventProcessed(event);
   if (!shouldProcess) {
     return;

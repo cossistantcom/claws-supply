@@ -1,10 +1,12 @@
-import { Metadata } from "next";
+import type { Metadata } from "next";
 import { AsciiPhoneShowcase } from "@/components/ascii-phone-showcase";
 import { LandingCommandDemo } from "@/components/landing-command-demo";
 import { LobsterClawIcon } from "@/components/lobster-claw";
 import { OpenClawPageShell } from "@/components/openclaw-page-shell";
 import { TemplateFeedGrid } from "@/components/template-feed-grid";
 import { discoveryPath } from "@/lib/routes";
+import { buildSeoMetadata, getDefaultOgImagePath } from "@/lib/seo";
+import { buildHomepageJsonLd, serializeJsonLd } from "@/lib/seo/jsonld";
 import { listPublishedTemplatesCached } from "@/lib/templates/read-service";
 import type {
   PublicTemplateCard,
@@ -14,11 +16,16 @@ import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildSeoMetadata({
   title: "Claws.supply — OpenClaw AI Agent Templates Marketplace",
   description:
     "Discover popular and latest OpenClaw agent templates, and launch faster with production-ready setups.",
-};
+  path: "/",
+  imagePath: getDefaultOgImagePath(),
+  dynamicOg: null,
+});
+
+const homepageJsonLd = buildHomepageJsonLd();
 
 const TOP_POPULAR_LIMIT = 4;
 const LATEST_LIMIT = 4;
@@ -127,6 +134,10 @@ export default async function Page() {
 
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(homepageJsonLd) }}
+      />
       <div className="overflow-x-clip min-h-screen relative mt-20 px-6 md:px-0">
         <OpenClawPageShell contentClassName="w-full max-w-4xl space-y-10">
           <div className="flex-1 flex flex-col gap-4">

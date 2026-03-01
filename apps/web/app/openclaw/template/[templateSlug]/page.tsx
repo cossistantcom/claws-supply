@@ -5,7 +5,11 @@ import { isAdmin } from "@/lib/auth/permissions";
 import { getSessionFromNextHeaders } from "@/lib/auth/session";
 import { getCategoryBySlug } from "@/lib/categories";
 import { categoryPath, discoveryPath, templatePath } from "@/lib/routes";
-import { buildSeoMetadata } from "@/lib/seo";
+import { absoluteUrl, buildSeoMetadata } from "@/lib/seo";
+import {
+  buildTemplateProductJsonLd,
+  serializeJsonLd,
+} from "@/lib/seo/jsonld";
 import {
   getTemplateRecordBySlug,
   mapTemplateDTO,
@@ -60,6 +64,7 @@ export async function generateMetadata({
     title: `${detail.template.title} — OpenClaw Template on Claws.supply`,
     description: detail.template.shortDescription,
     path: templatePath(detail.template.slug),
+    ogType: "article",
   });
 }
 
@@ -97,12 +102,22 @@ export default async function TemplateDetailPage({ params }: TemplatePageProps) 
 
   const category = getCategoryBySlug(detail.template.category);
   const relatedTemplates = detail.relatedTemplates;
+  const templateUrl = absoluteUrl(templatePath(detail.template.slug));
+  const productJsonLd = buildTemplateProductJsonLd({
+    detail,
+    templateUrl,
+    categoryLabel: category?.label ?? null,
+  });
   const versions = canManageTemplate
     ? await listTemplateVersions(templateRow.id)
     : [];
 
   return (
     <OpenClawPageShell>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(productJsonLd) }}
+      />
       <header className="space-y-4 border-b border-border pb-6">
         <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
           <Link className="hover:text-foreground" href="/">

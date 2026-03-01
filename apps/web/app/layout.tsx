@@ -6,13 +6,47 @@ import { Navbar } from "@/components/navbar";
 import { SiteFooter } from "@/components/site-footer";
 import { Toaster } from "@/components/ui/sonner";
 import { getSessionFromNextHeaders } from "@/lib/auth/session";
+import { absoluteUrl, getDefaultOgImagePath, getSiteUrl } from "@/lib/seo";
 import "./globals.css";
 import { MainProviders } from "./providers";
 
+const SITE_URL = getSiteUrl();
+const DEFAULT_OG_IMAGE_URL = absoluteUrl(getDefaultOgImagePath());
+
 export const metadata: Metadata = {
-  title: "Claws supply - explore, generate and sell OpenClaw templates",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "Claws.supply — OpenClaw AI Agent Templates Marketplace",
+    template: "%s",
+  },
   description:
-    "Quickstart your OpenClaw setup with pre-configured templates and join a community of OpenClaw enthusiasts.",
+    "Discover popular and latest OpenClaw agent templates, and launch faster with production-ready setups.",
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title: "Claws.supply — OpenClaw AI Agent Templates Marketplace",
+    description:
+      "Discover popular and latest OpenClaw agent templates, and launch faster with production-ready setups.",
+    url: "/",
+    siteName: "Claws.supply",
+    type: "website",
+    images: [
+      {
+        url: DEFAULT_OG_IMAGE_URL,
+        width: 1200,
+        height: 630,
+        alt: "Claws.supply OpenClaw template marketplace",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Claws.supply — OpenClaw AI Agent Templates Marketplace",
+    description:
+      "Discover popular and latest OpenClaw agent templates, and launch faster with production-ready setups.",
+    images: [DEFAULT_OG_IMAGE_URL],
+  },
 };
 
 export default async function RootLayout({

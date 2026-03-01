@@ -1,8 +1,16 @@
+import type { Metadata } from "next";
 import { SignInForm } from "@/components/auth/sign-in-form";
 import { getSessionFromNextHeaders } from "@/lib/auth/session";
+import { buildNoindexMetadata } from "@/lib/seo";
 import { redirect } from "next/navigation";
 
 const DEFAULT_REDIRECT_PATH = "/profile";
+
+export const metadata: Metadata = buildNoindexMetadata({
+  title: "Sign In — Claws.supply",
+  description: "Sign in to access your Claws.supply account and template workspace.",
+  path: "/auth/sign-in",
+});
 
 type SignInSearchParams = {
   next?: string | string[];

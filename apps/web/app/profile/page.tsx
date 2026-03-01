@@ -1,8 +1,17 @@
+import type { Metadata } from "next";
 import { OpenClawPageShell } from "@/components/openclaw-page-shell";
 import { redirect } from "next/navigation";
 import { ProfileSettingsPage } from "@/components/profile/profile-settings-page";
 import { SignOutButton } from "@/components/profile/sign-out-button";
 import { getSessionFromNextHeaders } from "@/lib/auth/session";
+import { buildNoindexMetadata } from "@/lib/seo";
+
+export const metadata: Metadata = buildNoindexMetadata({
+  title: "Profile Settings — Claws.supply",
+  description:
+    "Manage your Claws.supply profile settings, connected accounts, and verification status.",
+  path: "/profile",
+});
 
 export default async function ProfilePage() {
   const session = await getSessionFromNextHeaders();

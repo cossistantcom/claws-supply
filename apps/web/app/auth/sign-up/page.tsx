@@ -1,8 +1,16 @@
+import type { Metadata } from "next";
 import { SignUpForm } from "@/components/auth/sign-up-form";
 import { getSessionFromNextHeaders } from "@/lib/auth/session";
+import { buildNoindexMetadata } from "@/lib/seo";
 import { redirect } from "next/navigation";
 
 const DEFAULT_REDIRECT_PATH = "/profile";
+
+export const metadata: Metadata = buildNoindexMetadata({
+  title: "Create Account — Claws.supply",
+  description: "Create a Claws.supply account to buy, publish, and manage OpenClaw templates.",
+  path: "/auth/sign-up",
+});
 
 type SignUpSearchParams = {
   next?: string | string[];

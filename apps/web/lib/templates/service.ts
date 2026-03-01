@@ -4,6 +4,10 @@ import { isAdmin } from "@/lib/auth/permissions";
 import { CATEGORIES } from "@/lib/categories";
 import { db } from "@/lib/db";
 import { purchase, template, templateVersion, user } from "@/lib/db/schema";
+import {
+  ensureFreeTemplateOwnership,
+  recordTemplateDownloadCompleted,
+} from "@/lib/purchases/service";
 import { TemplateServiceError } from "./errors";
 import { normalizeTemplateDescription } from "./markdown";
 import {
@@ -697,11 +701,23 @@ export async function listTemplateVersions(templateId: string): Promise<Template
 
 async function canActorDownloadTemplate(actor: Actor, templateRow: TemplateRecord) {
   if (isAdmin(actor) || actor.id === templateRow.sellerId) {
-    return true;
+    return {
+      hasAccess: true,
+      purchaseId: null as string | null,
+    };
   }
 
   if (templateRow.priceCents === 0) {
-    return true;
+    const owned = await ensureFreeTemplateOwnership({
+      buyerId: actor.id,
+      sellerId: templateRow.sellerId,
+      templateId: templateRow.id,
+    });
+
+    return {
+      hasAccess: true,
+      purchaseId: owned.purchaseId,
+    };
   }
 
   const [ownedPurchase] = await db
@@ -718,7 +734,47 @@ async function canActorDownloadTemplate(actor: Actor, templateRow: TemplateRecor
     )
     .limit(1);
 
-  return Boolean(ownedPurchase);
+  return {
+    hasAccess: Boolean(ownedPurchase),
+    purchaseId: ownedPurchase?.id ?? null,
+  };
+}
+
+function withStreamCompletionHook(
+  stream: ReadableStream<Uint8Array>,
+  onComplete: () => Promise<void>,
+) {
+  const reader = stream.getReader();
+  let closed = false;
+
+  return new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      const chunk = await reader.read();
+
+      if (chunk.done) {
+        if (!closed) {
+          closed = true;
+          try {
+            await onComplete();
+          } catch {
+            // Never fail the download response if analytics logging fails.
+          }
+        }
+
+        controller.close();
+        return;
+      }
+
+      controller.enqueue(chunk.value);
+    },
+    async cancel(reason) {
+      try {
+        await reader.cancel(reason);
+      } catch {
+        // Ignore cancellation errors.
+      }
+    },
+  });
 }
 
 export async function getTemplateDownloadForActor(
@@ -743,8 +799,8 @@ export async function getTemplateDownloadForActor(
     });
   }
 
-  const hasAccess = await canActorDownloadTemplate(actor, templateRow);
-  if (!hasAccess) {
+  const access = await canActorDownloadTemplate(actor, templateRow);
+  if (!access.hasAccess) {
     throw new TemplateServiceError("You do not have access to this template.", {
       code: "FORBIDDEN",
       status: 403,
@@ -780,8 +836,16 @@ export async function getTemplateDownloadForActor(
       .where(eq(template.id, templateRow.id));
   });
 
+  const stream = withStreamCompletionHook(blobResult.stream, async () => {
+    await recordTemplateDownloadCompleted({
+      purchaseId: access.purchaseId,
+      buyerId: actor.id,
+      templateId: templateRow.id,
+    });
+  });
+
   return {
-    stream: blobResult.stream,
+    stream,
     contentType: blobResult.blob.contentType ?? "application/zip",
     fileName: `${templateRow.slug}-v${templateRow.version ?? "latest"}.zip`,
     size: blobResult.blob.size,

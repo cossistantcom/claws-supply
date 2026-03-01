@@ -1,4 +1,3 @@
-import { stripe } from "@better-auth/stripe";
 import { eq } from "drizzle-orm";
 import { betterAuth } from "better-auth/minimal";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
@@ -8,7 +7,6 @@ import { username } from "better-auth/plugins/username";
 import { decodeJwt } from "jose";
 import { db } from "./db";
 import * as schema from "./db/schema";
-import { getStripeClient } from "./stripe";
 
 const USERNAME_MIN_LENGTH = 3;
 const USERNAME_MAX_LENGTH = 30;
@@ -453,14 +451,6 @@ function createAuth() {
         maxUsernameLength: USERNAME_MAX_LENGTH,
         usernameValidator: (value) => /^[a-z0-9_]+$/.test(value),
         usernameNormalization: (value) => value.toLowerCase(),
-      }),
-      stripe({
-        stripeClient: getStripeClient(),
-        stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET!,
-        createCustomerOnSignUp: true,
-        subscription: {
-          enabled: false,
-        },
       }),
     ],
   });

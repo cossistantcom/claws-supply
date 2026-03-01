@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { LegalPageLayout } from "@/components/legal-page-layout";
+import { buildSeoMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildSeoMetadata({
   title: "Privacy Policy - Claws supply",
   description:
     "Learn how Claws supply collects, uses, and protects your personal information.",
-};
+  path: "/policy",
+});
 
 const sections = [
   {

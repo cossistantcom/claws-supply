@@ -6,7 +6,7 @@ import {
   categoryPath,
   categoryPathWithSort,
 } from "@/lib/routes";
-import { buildSeoMetadata } from "@/lib/seo";
+import { buildSeoMetadata, hasAnySearchParams } from "@/lib/seo";
 import { parseTemplateListQueryFromSearchParams } from "@/lib/templates/read-schemas";
 import { listPublishedTemplatesCached } from "@/lib/templates/read-service";
 import type { TemplateListQueryInput } from "@/lib/templates/public-types";
@@ -63,18 +63,6 @@ function parseCategoryListQuery(
   }
 }
 
-function isParamHeavyVariant(
-  searchParams: CategoryRouteSearchParams,
-  query: TemplateListQueryInput,
-) {
-  const hasSearch = Boolean(query.search);
-  const hasNonDefaultSort =
-    getFirstValue(searchParams.sort) !== undefined && query.sort !== "popular";
-  const hasPageBeyondFirst = query.page > 1;
-
-  return hasSearch || hasNonDefaultSort || hasPageBeyondFirst;
-}
-
 export async function generateMetadata({
   params,
   searchParams,
@@ -103,13 +91,11 @@ export async function generateMetadata({
     });
   }
 
-  const query = parseCategoryListQuery(rawSearchParams);
-
   return buildSeoMetadata({
     title: categoryDefinition.seoTitle,
     description: categoryDefinition.seoDescription,
     path: categoryPath(categoryDefinition.slug),
-    noindex: isParamHeavyVariant(rawSearchParams, query),
+    noindex: hasAnySearchParams(rawSearchParams),
   });
 }
 

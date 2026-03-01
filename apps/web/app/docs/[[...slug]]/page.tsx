@@ -55,6 +55,7 @@ export async function generateMetadata({
       page.data.description ??
       "Practical docs for publishing, using, and selling OpenClaw templates.",
     path: page.url,
+    ogType: "article",
   });
 }
 

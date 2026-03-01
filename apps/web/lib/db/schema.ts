@@ -6,6 +6,7 @@ import {
   integer,
   pgEnum,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -20,6 +21,19 @@ export const purchaseStatusEnum = pgEnum("purchase_status", [
   "pending",
   "completed",
   "failed",
+]);
+export const purchaseEventTypeEnum = pgEnum("purchase_event_type", [
+  "checkout_started",
+  "checkout_completed",
+  "checkout_expired",
+  "free_claimed",
+  "free_claimed_auto",
+  "download_completed",
+]);
+export const purchaseEventSourceEnum = pgEnum("purchase_event_source", [
+  "api",
+  "webhook",
+  "download",
 ]);
 export const templateStatusEnum = pgEnum("template_status", [
   "draft",
@@ -262,10 +276,13 @@ export const purchase = pgTable(
     sellerPayoutAmountCents: integer("seller_payout_amount_cents").notNull(),
     saleType: purchaseSaleTypeEnum("sale_type").notNull(),
     referralCode: text("referral_code"),
+    stripeCheckoutSessionId: text("stripe_checkout_session_id"),
     stripePaymentIntentId: text("stripe_payment_intent_id"),
     stripeTransferId: text("stripe_transfer_id"),
     status: purchaseStatusEnum("status").notNull().default("pending"),
+    completedAt: timestamp("completed_at"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
   (table) => ({
     buyerTemplateUnique: uniqueIndex("purchase_buyer_template_unique").on(
@@ -276,6 +293,9 @@ export const purchase = pgTable(
     sellerIdx: index("purchase_seller_id_idx").on(table.sellerId),
     templateIdx: index("purchase_template_id_idx").on(table.templateId),
     createdAtIdx: index("purchase_created_at_idx").on(table.createdAt),
+    checkoutSessionUnique: uniqueIndex("purchase_stripe_checkout_session_id_unique").on(
+      table.stripeCheckoutSessionId,
+    ),
     priceCheck: check("purchase_price_cents_check", sql`${table.priceCents} >= 0`),
     commissionRateCheck: check(
       "purchase_commission_rate_check",
@@ -289,6 +309,37 @@ export const purchase = pgTable(
       "purchase_seller_payout_check",
       sql`${table.sellerPayoutAmountCents} >= 0`,
     ),
+  }),
+);
+
+export const purchaseEvent = pgTable(
+  "purchase_event",
+  {
+    id: text("id").primaryKey(),
+    purchaseId: text("purchase_id").references(() => purchase.id, {
+      onDelete: "set null",
+    }),
+    buyerId: text("buyer_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    templateId: text("template_id")
+      .notNull()
+      .references(() => template.id, { onDelete: "cascade" }),
+    eventType: purchaseEventTypeEnum("event_type").notNull(),
+    source: purchaseEventSourceEnum("source").notNull(),
+    stripeEventId: text("stripe_event_id"),
+    stripeCheckoutSessionId: text("stripe_checkout_session_id"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    purchaseIdx: index("purchase_event_purchase_id_idx").on(table.purchaseId),
+    buyerIdx: index("purchase_event_buyer_id_idx").on(table.buyerId),
+    templateIdx: index("purchase_event_template_id_idx").on(table.templateId),
+    eventTypeIdx: index("purchase_event_event_type_idx").on(table.eventType),
+    createdAtIdx: index("purchase_event_created_at_idx").on(table.createdAt),
+    stripeEventIdUnique: uniqueIndex("purchase_event_stripe_event_id_unique")
+      .on(table.stripeEventId)
+      .where(sql`${table.stripeEventId} IS NOT NULL`),
   }),
 );
 
@@ -435,6 +486,31 @@ export const stripeWebhookEvent = pgTable(
   (table) => ({
     eventTypeIdx: index("stripe_webhook_event_event_type_idx").on(table.eventType),
     processedAtIdx: index("stripe_webhook_event_processed_at_idx").on(
+      table.processedAt,
+    ),
+  }),
+);
+
+export const stripeConnectWebhookEvent = pgTable(
+  "stripe_connect_webhook_event",
+  {
+    eventId: text("event_id").notNull(),
+    accountId: text("account_id").notNull(),
+    eventType: text("event_type").notNull(),
+    processedAt: timestamp("processed_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    pk: primaryKey({
+      name: "stripe_connect_webhook_event_pkey",
+      columns: [table.eventId, table.accountId],
+    }),
+    accountIdIdx: index("stripe_connect_webhook_event_account_id_idx").on(
+      table.accountId,
+    ),
+    eventTypeIdx: index("stripe_connect_webhook_event_event_type_idx").on(
+      table.eventType,
+    ),
+    processedAtIdx: index("stripe_connect_webhook_event_processed_at_idx").on(
       table.processedAt,
     ),
   }),

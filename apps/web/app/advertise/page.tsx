@@ -2,12 +2,14 @@ import type { Metadata } from "next";
 import { OpenClawPageShell } from "@/components/openclaw-page-shell";
 import { AdvertisePageClient } from "@/components/ads/advertise-page-client";
 import { getSessionFromNextHeaders } from "@/lib/auth/session";
+import { buildSeoMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildSeoMetadata({
   title: "Advertise on Claws.supply",
   description:
     "Reach high-intent OpenClaw template buyers with sponsored placements across Claws.supply.",
-};
+  path: "/advertise",
+});
 
 export const dynamic = "force-dynamic";
 
