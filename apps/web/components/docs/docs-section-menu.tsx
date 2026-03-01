@@ -37,15 +37,15 @@ export function DocsSectionMenu() {
               created by anthony riera{" "}
               <Link
                 className="underline underline-offset-2"
-                href="https://x.com/_anthonyriera"
+                href="https://x.com/anthonyriera"
                 rel="noreferrer"
                 target="_blank"
               >
-                @_anthonyriera on X
+                @anthonyriera on X
               </Link>
             </p>
             <p>
-              team:{" "}
+              and{" "}
               <Link
                 className="underline underline-offset-2"
                 href="https://cossistant.com"

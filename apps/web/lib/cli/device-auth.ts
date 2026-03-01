@@ -5,6 +5,19 @@ type DeviceAuthPostResult = {
   payload: unknown;
 };
 
+type DeviceAuthErrorPayload = {
+  error?: unknown;
+  error_description?: unknown;
+  message?: unknown;
+};
+
+type DeviceAuthApiError = {
+  body?: unknown;
+  message?: unknown;
+  status?: unknown;
+  statusCode?: unknown;
+};
+
 export async function postToDeviceAuthEndpoint(options: {
   request: Request;
   path: "/device/code" | "/device/token" | "/device/approve" | "/device/deny";
@@ -48,11 +61,7 @@ export function parseDeviceAuthError(payload: unknown, fallbackMessage: string):
     return fallbackMessage;
   }
 
-  const body = payload as {
-    error?: unknown;
-    error_description?: unknown;
-    message?: unknown;
-  };
+  const body = payload as DeviceAuthErrorPayload;
 
   if (typeof body.error_description === "string" && body.error_description.length > 0) {
     return body.error_description;
@@ -67,4 +76,43 @@ export function parseDeviceAuthError(payload: unknown, fallbackMessage: string):
   }
 
   return fallbackMessage;
+}
+
+export function parseDeviceAuthApiError(error: unknown, fallbackMessage: string): string {
+  if (!error || typeof error !== "object") {
+    return fallbackMessage;
+  }
+
+  const candidate = error as DeviceAuthApiError;
+  const messageFromBody = parseDeviceAuthError(candidate.body, "");
+  if (messageFromBody.length > 0) {
+    return messageFromBody;
+  }
+
+  if (typeof candidate.message === "string" && candidate.message.trim().length > 0) {
+    return candidate.message;
+  }
+
+  return fallbackMessage;
+}
+
+export function resolveDeviceAuthApiErrorStatus(
+  error: unknown,
+  fallbackStatus: number,
+): number {
+  if (!error || typeof error !== "object") {
+    return fallbackStatus;
+  }
+
+  const candidate = error as DeviceAuthApiError;
+
+  if (typeof candidate.statusCode === "number" && Number.isFinite(candidate.statusCode)) {
+    return candidate.statusCode;
+  }
+
+  if (typeof candidate.status === "number" && Number.isFinite(candidate.status)) {
+    return candidate.status;
+  }
+
+  return fallbackStatus;
 }

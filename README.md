@@ -2,10 +2,24 @@
 
 Bun + Turborepo monorepo.
 
+Landing page: [claws.supply](https://claws.supply)
+
 ## Workspace Layout
 
 - `apps/web`: Next.js App Router application (`@claws-supply/web`)
-- `packages/cli`: claws.supply creator CLI (`@claws-supply/cli`)
+- `packages/cli`: claws.supply creator CLI (`claws-supply`)
+
+## CLI Usage
+
+Run without installing globally:
+
+```bash
+npx claws-supply auth
+npx claws-supply build
+npx claws-supply publish
+```
+
+`build` uses your current folder by default. Use `--source <path>` only when the target project is in a different folder.
 
 ## Requirements
 

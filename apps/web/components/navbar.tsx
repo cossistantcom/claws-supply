@@ -79,12 +79,14 @@ export function Navbar({ user }: NavbarProps) {
             >
               MEMBERS
             </Link>
+            {/* Temporarily hidden until ad release is ready.
             <Link
               className="text-xs tracking-wider hover:opacity-80 transition-opacity"
               href="/advertise"
             >
               ADVERTISE
             </Link>
+            */}
             <Link
               className="text-xs tracking-wider hover:opacity-80 transition-opacity"
               href="/docs"

@@ -7,6 +7,53 @@ import { DEFAULT_CLIENT_ID } from "./lib/constants";
 import { EXIT_CODES, normalizeError } from "./utils/errors";
 import { createLogger, formatErrorMessage } from "./utils/logger";
 
+const LOCAL_TESTING_TUTORIAL = `
+Local testing tutorial:
+  1) Start the local web API in one terminal:
+     cd apps/web
+     bun run dev
+
+  2) Build and test the CLI in another terminal:
+     cd packages/cli
+     bun run build
+     bun run test
+     bun run smoke:local
+
+  3) Run an end-to-end local flow against localhost:
+     node dist/index.js auth -D
+     node dist/index.js build -D
+     node dist/index.js publish -D
+     --source . is optional and equivalent to the default current folder.
+
+Testing this CLI from another folder:
+  Option A (no global link):
+    cd /path/to/another/project
+    node /absolute/path/to/hourglass/packages/cli/dist/index.js build -D
+
+  Option B (publish-like tarball install):
+    cd /absolute/path/to/hourglass/packages/cli
+    bun run build
+    npm pack
+    cd /path/to/another/project
+    npm install -D /absolute/path/to/hourglass/packages/cli/claws-supply-0.1.0.tgz
+    npx claws-supply build -D
+    npx claws-supply publish -D
+
+  Option C (global linked command):
+    cd /absolute/path/to/hourglass/packages/cli
+    npm link
+    cd /path/to/another/project
+    claws-supply build -D
+    claws-supply publish -D
+
+Different source directory than your current folder:
+  claws-supply build -D --source /absolute/path/to/project
+
+Clean reset between runs:
+  - Run: claws-supply logout
+  - Remove project-local state if needed: .claws-supply/
+`;
+
 function collectString(value: string, previous: string[]): string[] {
   return [...previous, value];
 }
@@ -81,6 +128,7 @@ export function createProgram(): Command {
   program
     .name("claws-supply")
     .description("claws.supply template creator CLI")
+    .addHelpText("after", LOCAL_TESTING_TUTORIAL)
     .showHelpAfterError(true);
 
   program
@@ -102,7 +150,7 @@ export function createProgram(): Command {
     .command("build")
     .description("Build and sign a local template artifact")
     .option("-D, --dev", "Use local API at http://localhost:3039")
-    .option("--source <path>", "Source directory", process.cwd())
+    .option("--source <path>", "Source directory (defaults to current working directory)")
     .option("--title <title>", "Template title")
     .option("--slug <slug>", "Template slug")
     .option("--include <glob>", "Additional include pattern", collectString, [])

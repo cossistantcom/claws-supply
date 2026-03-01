@@ -1,4 +1,4 @@
-import { SidebarAdStack } from "@/components/ads/sidebar-ad-stack";
+// import { SidebarAdStack } from "@/components/ads/sidebar-ad-stack";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
@@ -50,7 +50,8 @@ export async function DocsRightSidebar() {
           </div>
         </section>
 
-        <SidebarAdStack />
+        {/* Temporarily hidden until ad release is ready. */}
+        {/* <SidebarAdStack /> */}
       </div>
     </div>
   );

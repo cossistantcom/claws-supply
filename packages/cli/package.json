@@ -1,10 +1,15 @@
 {
-  "name": "@claws-supply/cli",
+  "name": "claws-supply",
   "version": "0.1.0",
-  "private": true,
+  "description": "CLI for building and publishing claws.supply templates",
   "type": "module",
   "bin": {
     "claws-supply": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "publishConfig": {
+    "access": "public"
   },
   "files": [
     "dist"
@@ -16,7 +21,9 @@
     "build": "tsup",
     "test": "vitest run",
     "test:watch": "vitest",
-    "smoke:local": "node ./scripts/smoke-local.mjs"
+    "smoke:local": "node ./scripts/smoke-local.mjs",
+    "prepack": "npm run build",
+    "prepublishOnly": "npm run test && npm run build"
   },
   "dependencies": {
     "@vercel/blob": "^2.3.0",

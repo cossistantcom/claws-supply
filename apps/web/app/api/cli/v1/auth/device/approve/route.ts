@@ -1,8 +1,12 @@
 import { jsonError, jsonSuccess } from "@/lib/api/response";
 import { enforceCliDeviceDecisionRateLimit } from "@/lib/api/rate-limit";
-import { handleRouteError, requireSessionOrThrow } from "@/lib/api/route-helpers";
+import { requireSessionOrThrow } from "@/lib/api/route-helpers";
 import { parseJsonBodyWithSchema } from "@/lib/api/validation";
-import { postToDeviceAuthEndpoint, parseDeviceAuthError } from "@/lib/cli/device-auth";
+import { auth } from "@/lib/auth-server";
+import {
+  parseDeviceAuthApiError,
+  resolveDeviceAuthApiErrorStatus,
+} from "@/lib/cli/device-auth";
 import { cliDeviceDecisionSchema } from "@/lib/cli/schemas";
 
 export async function POST(request: Request) {
@@ -17,30 +21,18 @@ export async function POST(request: Request) {
     }
 
     const input = await parseJsonBodyWithSchema(request, cliDeviceDecisionSchema);
-    const response = await postToDeviceAuthEndpoint({
-      request,
-      path: "/device/approve",
+    const response = await auth.api.deviceApprove({
+      headers: request.headers,
       body: {
         userCode: input.userCode,
       },
     });
 
-    if (response.status >= 400) {
-      return jsonError(
-        parseDeviceAuthError(response.payload, "Unable to approve device code."),
-        {
-          code: "CLI_DEVICE_AUTH_APPROVE_ERROR",
-          status: response.status,
-        },
-      );
-    }
-
-    return jsonSuccess(response.payload);
+    return jsonSuccess(response);
   } catch (error) {
-    return handleRouteError(error, {
-      message: "Unable to approve device code.",
+    return jsonError(parseDeviceAuthApiError(error, "Unable to approve device code."), {
       code: "CLI_DEVICE_AUTH_APPROVE_ERROR",
-      status: 400,
+      status: resolveDeviceAuthApiErrorStatus(error, 400),
     });
   }
 }

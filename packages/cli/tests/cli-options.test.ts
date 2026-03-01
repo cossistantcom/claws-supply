@@ -34,4 +34,13 @@ describe("cli command options", () => {
     const jsonOption = logout.options.find((option) => option.long === "--json");
     expect(jsonOption).toBeTruthy();
   });
+
+  it("keeps build --source runtime-defaulted to cwd", () => {
+    const build = requireCommand("build");
+    const sourceOption = build.options.find((option) => option.long === "--source");
+
+    expect(sourceOption).toBeTruthy();
+    expect(sourceOption?.defaultValue).toBeUndefined();
+    expect(sourceOption?.description).toContain("defaults to current working directory");
+  });
 });

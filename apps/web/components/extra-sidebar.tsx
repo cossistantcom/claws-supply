@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { MemberAvatar } from "@/components/members/member-avatar";
-import { SidebarAdStack } from "@/components/ads/sidebar-ad-stack";
+// import { SidebarAdStack } from "@/components/ads/sidebar-ad-stack";
 import { getCommunitySidebarSnapshotCached } from "@/lib/members/read-service";
 import { memberPath } from "@/lib/routes";
 
-const SIDEBAR_SLOT_COUNT = 5;
+// const SIDEBAR_SLOT_COUNT = 5;
 const COMMUNITY_MEMBER_LIMIT = 10;
 
 export async function ExtraSidebar() {
@@ -37,7 +37,8 @@ export async function ExtraSidebar() {
           ))}
         </div>
       </section>
-      <SidebarAdStack slotCount={SIDEBAR_SLOT_COUNT} />
+      {/* Temporarily hidden until ad release is ready. */}
+      {/* <SidebarAdStack slotCount={SIDEBAR_SLOT_COUNT} /> */}
     </div>
   );
 }

@@ -1,136 +1,126 @@
 # claws-supply CLI (`packages/cli`)
 
-MVP creator CLI for claws.supply with four commands:
+Landing page: [claws.supply](https://claws.supply)
 
-- `claws-supply auth`
-- `claws-supply logout`
-- `claws-supply build`
-- `claws-supply publish`
+CLI for creating, packaging, and publishing template artifacts to claws.supply.
 
-No consume/install flow is included in this phase.
+## Use the CLI (from npm)
 
-## Commands
-
-### `auth`
+Run directly with `npx`:
 
 ```bash
-claws-supply auth [--client-id <id>] [-D] [--no-open] [--json]
+npx claws-supply --help
+npx claws-supply auth
+npx claws-supply build
+npx claws-supply publish
 ```
 
-What it does:
+Commands:
 
-- Starts Better Auth device authorization via `/api/cli/v1/auth/device/code`
-- Opens `verification_uri_complete` (unless `--no-open`)
-- Polls `/api/cli/v1/auth/device/token` until approved
-- Stores bearer auth state locally
+- `claws-supply auth` — authenticate with device authorization
+- `claws-supply logout` — clear local auth state
+- `claws-supply build` — build and sign a local template artifact
+- `claws-supply publish` — upload and publish latest artifact as draft
 
-Auth state path:
+## Default Source Behavior
 
-- `~/.config/claws-supply/auth.json` (or `$XDG_CONFIG_HOME/claws-supply/auth.json`)
-
-### `logout`
+`build` targets your current folder by default:
 
 ```bash
-claws-supply logout [--json]
+npx claws-supply build
 ```
 
-What it does:
-
-- Removes local CLI auth state file (`auth.json`) if present
-- Succeeds even when no auth state file exists (idempotent)
-- Does not revoke server-side session/token (local-only logout)
-
-### `build`
+Use `--source <path>` only when the target project is elsewhere:
 
 ```bash
-claws-supply build [--source <path>] [--title <title>] [--slug <slug>] [--yes] [--include <glob>] [--exclude <glob>] [-D] [--json]
+npx claws-supply build --source /path/to/target
 ```
 
-What it does:
+`--source .` is optional and equivalent to the default current folder behavior.
 
-- Requires existing auth state (for bearer token + publisher hash)
-- Checks slug availability via `/api/cli/v1/templates/slug-availability`
-- Scans source files and lets you choose include groups (interactive default)
-- Builds deterministic zip with generated `manifest.json`
-- Stores artifact metadata under project-local `.claws-supply`
+## Local API vs Production
 
-Build artifact output:
+- Default target: `https://claws.supply`
+- Local target: pass `-D` to use `http://localhost:3039`
 
-- `./.claws-supply/builds/<slug>/v1/template-v1.zip`
-- `./.claws-supply/builds/<slug>/v1/manifest.json`
-- `./.claws-supply/builds/<slug>/v1/artifact.json`
-- `./.claws-supply/latest-build.json`
-
-Hard exclusions (always excluded):
-
-- Memory: `memory/**`, `MEMORY.md`
-- Secrets/state: `.env*`, `credentials/**`, `auth-profiles.json`, `sessions/**`, `logs/**`, sandbox/state files
-- Generated/noisy dirs: `.git/**`, `node_modules/**`, `.next/**`, `.turbo/**`, `dist/**`
-
-### `publish`
+Examples:
 
 ```bash
-claws-supply publish [--artifact <zipPath>] [-D] [--json]
+npx claws-supply auth -D
+npx claws-supply build -D
+npx claws-supply publish -D
 ```
 
-What it does:
-
-- Loads latest build artifact (or `--artifact` path)
-- Requests upload token via `/api/cli/v1/templates/uploads/zip-token`
-- Uploads zip to deterministic private blob pathname with Vercel Blob client token
-- Finalizes publish via `/api/cli/v1/templates/publish`
-- Prints created draft template URL
-
-Environment targeting:
-
-- Default: production API (`https://claws.supply`)
-- `-D`: local API (`http://localhost:3039`)
-
-## Quick Start
+## Local Development (this repo)
 
 ```bash
-cd /Users/anthonyriera/code/hourglass/packages/cli
+cd /Users/anthonyriera/code/hourglass
+bun install
+cd packages/cli
 bun run build
+bun run test
+bun run smoke:local
+```
+
+Run built CLI directly:
+
+```bash
 node dist/index.js auth -D
 node dist/index.js build -D
 node dist/index.js publish -D
 ```
 
-## Local Testing Before Deploy
+## Test CLI in Another Folder
 
-Automated:
+Option A: run built binary by absolute path.
+
+```bash
+cd /path/to/another/project
+node /Users/anthonyriera/code/hourglass/packages/cli/dist/index.js build -D
+node /Users/anthonyriera/code/hourglass/packages/cli/dist/index.js publish -D
+```
+
+Option B: install tarball (publish-like test).
 
 ```bash
 cd /Users/anthonyriera/code/hourglass/packages/cli
-bun run test
+bun run build
+npm pack
+cd /path/to/another/project
+npm install -D /Users/anthonyriera/code/hourglass/packages/cli/claws-supply-0.1.0.tgz
+npx claws-supply build -D
+npx claws-supply publish -D
 ```
 
-Manual smoke:
+Option C: global link for fast iteration.
 
 ```bash
 cd /Users/anthonyriera/code/hourglass/packages/cli
-bun run smoke:local
+npm link
+cd /path/to/another/project
+claws-supply build -D
+claws-supply publish -D
 ```
 
-Prerequisites:
+## Auth and Artifact State
 
-- Run local web API at `http://localhost:3039`
-- `apps/web/.env.local` includes `PRIVATE_READ_WRITE_TOKEN`
-- Approve device code in browser during `auth`
+- Auth state: `~/.config/claws-supply/auth.json` (or `$XDG_CONFIG_HOME/claws-supply/auth.json`)
+- Build output: `./.claws-supply/builds/<slug>/v1/`
+- Latest pointer: `./.claws-supply/latest-build.json`
+
+## Clean Reset
+
+```bash
+claws-supply logout
+rm -rf .claws-supply
+```
 
 ## Troubleshooting
 
 | Symptom | Likely Cause | Resolution |
 | --- | --- | --- |
-| `401 Unauthorized` | Expired/invalid token | Re-run `claws-supply auth` |
-| `409 slug already in use` | Slug conflict | Pick another slug and rebuild |
+| `401 Unauthorized` | Expired or invalid token | Re-run `claws-supply auth` |
+| `409 slug already in use` | Slug conflict | Pick a different slug and rebuild |
 | `422` publish validation error | Manifest/title/slug mismatch or artifact integrity issue | Re-run `build`, then `publish` |
 | `429 Too many requests` | API rate limit | Wait and retry |
-| Upload token errors | Missing web env config | Ensure `PRIVATE_READ_WRITE_TOKEN` is set for `apps/web` |
-
-## Scripts
-
-- `bun run build` — compile CLI with tsup
-- `bun run test` — run vitest suite
-- `bun run test:watch` — vitest watch mode
-- `bun run smoke:local` — guided local smoke checklist
+| Upload token errors | Missing web env config | Ensure `apps/web/.env.local` includes `PRIVATE_READ_WRITE_TOKEN` |
