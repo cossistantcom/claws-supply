@@ -1,27 +1,28 @@
+import Link from "next/link";
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { ExtraSidebar } from "@/components/extra-sidebar";
 import { OpenClawPageShell } from "@/components/openclaw-page-shell";
 import { TemplateCard } from "@/components/template-card";
-import { TemplateOwnerPanel } from "@/components/templates/template-owner-panel";
 import { isAdmin } from "@/lib/auth/permissions";
 import { getSessionFromNextHeaders } from "@/lib/auth/session";
 import { getCategoryBySlug } from "@/lib/categories";
-import { categoryPath, discoveryPath, templatePath } from "@/lib/routes";
+import {
+  categoryPath,
+  discoveryPath,
+  templateEditPath,
+  templatePath,
+} from "@/lib/routes";
 import { absoluteUrl, buildSeoMetadata } from "@/lib/seo";
 import {
   buildTemplateProductJsonLd,
   serializeJsonLd,
 } from "@/lib/seo/jsonld";
-import {
-  getTemplateRecordBySlug,
-  mapTemplateDTO,
-} from "@/lib/templates/repository";
+import { getTemplateRecordBySlug } from "@/lib/templates/repository";
 import {
   getTemplateDetailBySlugIncludingUnpublished,
   getPublishedTemplateBySlugCached,
 } from "@/lib/templates/read-service";
-import { listTemplateVersions } from "@/lib/templates/service";
-import type { Metadata } from "next";
-import { notFound } from "next/navigation";
-import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -108,17 +109,26 @@ export default async function TemplateDetailPage({ params }: TemplatePageProps) 
     templateUrl,
     categoryLabel: category?.label ?? null,
   });
-  const versions = canManageTemplate
-    ? await listTemplateVersions(templateRow.id)
-    : [];
 
   return (
-    <OpenClawPageShell>
+    <OpenClawPageShell
+      rightSidebar={(
+        <ExtraSidebar
+          variant="templateCompact"
+          seller={{
+            displayName: detail.seller.displayName,
+            username: detail.seller.username,
+            avatarUrl: detail.seller.avatarUrl,
+            isVerified: detail.seller.isVerified,
+          }}
+        />
+      )}
+    >
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: serializeJsonLd(productJsonLd) }}
       />
-      <header className="space-y-4 border-b border-border pb-6">
+      <header className="space-y-5 border-b border-border pb-6">
         <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
           <Link className="hover:text-foreground" href="/">
             Home
@@ -136,14 +146,27 @@ export default async function TemplateDetailPage({ params }: TemplatePageProps) 
         </div>
 
         <h1 className="text-3xl sm:text-4xl">{detail.template.title}</h1>
-        <p className="text-sm text-muted-foreground max-w-2xl">
-          {detail.template.description}
-        </p>
+
+        <div className="flex flex-wrap items-center gap-6 text-lg sm:text-xl">
+          <div>
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Price</p>
+            <p>{formatPrice(detail.template.priceCents, detail.template.currency)}</p>
+          </div>
+          <div>
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Rating</p>
+            <p>{detail.stats.rating.toFixed(1)}</p>
+          </div>
+          <div>
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Reviews</p>
+            <p>{detail.stats.reviewCount.toLocaleString()}</p>
+          </div>
+        </div>
+
+        <p className="max-w-3xl text-sm text-muted-foreground">{detail.template.shortDescription}</p>
+
         {detail.template.versionNotes ? (
-          <div className="border border-border p-3 text-xs bg-muted/20">
-            <p className="uppercase tracking-wide text-muted-foreground">
-              What&apos;s New
-            </p>
+          <div className="border border-border bg-muted/20 p-3 text-xs">
+            <p className="uppercase tracking-wide text-muted-foreground">What&apos;s New</p>
             <p className="mt-1">
               {detail.template.version ? `v${detail.template.version}: ` : ""}
               {detail.template.versionNotes}
@@ -151,34 +174,11 @@ export default async function TemplateDetailPage({ params }: TemplatePageProps) 
           </div>
         ) : null}
 
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4 text-xs">
-          <div className="border border-border p-3">
-            <p className="text-muted-foreground">Price</p>
-            <p className="text-sm">
-              {formatPrice(detail.template.priceCents, detail.template.currency)}
-            </p>
-          </div>
-          <div className="border border-border p-3">
-            <p className="text-muted-foreground">Downloads</p>
-            <p className="text-sm">
-              {detail.stats.downloadCount.toLocaleString()}
-            </p>
-          </div>
-          <div className="border border-border p-3">
-            <p className="text-muted-foreground">Rating</p>
-            <p className="text-sm">{detail.stats.rating.toFixed(1)}</p>
-          </div>
-          <div className="border border-border p-3">
-            <p className="text-muted-foreground">Reviews</p>
-            <p className="text-sm">{detail.stats.reviewCount}</p>
-          </div>
-        </div>
-
         <div className="flex flex-wrap items-center gap-4 text-xs">
           {canManageTemplate ? (
-            <span className="border border-border px-2 py-1">
-              Status: {templateRow.status}
-            </span>
+            <Link className="hover:underline" href={templateEditPath(detail.template.slug)}>
+              Edit template
+            </Link>
           ) : null}
           {category ? (
             <Link className="hover:underline" href={categoryPath(category.slug)}>
@@ -195,27 +195,11 @@ export default async function TemplateDetailPage({ params }: TemplatePageProps) 
       </header>
 
       <section className="space-y-3">
-        <h2 className="text-lg">Seller</h2>
-        <div className="border border-border p-4 text-sm">
-          <p className="text-base">{detail.seller.displayName}</p>
-          <p className="text-muted-foreground">@{detail.seller.username}</p>
-          <p className="text-muted-foreground mt-2">
-            {detail.seller.isVerified
-              ? "Verified seller"
-              : "Seller profile pending verification"}
-          </p>
-        </div>
+        <h2 className="text-lg">Template Overview</h2>
+        <p className="max-w-3xl text-sm text-muted-foreground">
+          {detail.template.description}
+        </p>
       </section>
-
-      {canManageTemplate ? (
-        <section className="space-y-4">
-          <TemplateOwnerPanel
-            initialTemplate={mapTemplateDTO(templateRow)}
-            initialVersions={versions}
-            isAdmin={Boolean(session && isAdmin(session.user))}
-          />
-        </section>
-      ) : null}
 
       {relatedTemplates.length > 0 ? (
         <section className="space-y-4">

@@ -1,17 +1,12 @@
 "use client";
 
 import { useMemo, useState, type FormEvent } from "react";
-import { Avatar, AvatarImage } from "facehash";
 import {
-  ExternalLinkIcon,
   Loader2Icon,
-  RefreshCwIcon,
-  SaveIcon,
   ShieldCheckIcon,
-  UserRoundIcon,
 } from "lucide-react";
 import { DeleteAccountDialog } from "@/components/profile/delete-account-dialog";
-import { CossistantAvatarFallback } from "@/components/profile/cossistant-avatar-fallback";
+import { ProfileSellerIdentity } from "@/components/profile/profile-seller-identity";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -22,8 +17,6 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import Image from "next/image";
 import {
   useConnectStripeMutation,
   useConnectXMutation,
@@ -33,6 +26,7 @@ import {
   useUpdateProfileMutation,
 } from "@/lib/profile/query";
 import { isUserVerified } from "@/lib/profile/verification";
+import { memberPath } from "@/lib/routes";
 
 function getErrorMessage(error: unknown, fallback: string): string {
   if (error && typeof error === "object" && "message" in error) {
@@ -43,14 +37,6 @@ function getErrorMessage(error: unknown, fallback: string): string {
   }
 
   return fallback;
-}
-
-function ProviderLogoBadge({ src, alt }: { src: string; alt: string }) {
-  return (
-    <div className="flex size-6 shrink-0 items-center justify-center rounded-none text-primary fill-primary">
-      <Image src={src} alt={alt} width={24} height={24} />
-    </div>
-  );
 }
 
 export function ProfileSettingsPage() {
@@ -242,26 +228,14 @@ export function ProfileSettingsPage() {
     <div className="flex w-full flex-col gap-6">
       <Card>
         <CardContent className="space-y-5">
-          <div className="flex items-center gap-4">
-            <Avatar className="size-12 overflow-hidden border border-border bg-muted">
-              {profile.image ? (
-                <AvatarImage
-                  src={profile.image}
-                  alt={`${profile.name} avatar`}
-                />
-              ) : null}
-              <CossistantAvatarFallback
-                className="text-black"
-                name={profile.username || profile.name || "user"}
-              />
-            </Avatar>
-            <div className="space-y-2">
-              <p className="text-base">@{profile.username}</p>
-              <Badge variant={isVerifiedSeller ? "secondary" : "outline"}>
-                {isVerifiedSeller ? "Verified seller 🦞" : "Not verified yet"}
-              </Badge>
-            </div>
-          </div>
+          <ProfileSellerIdentity
+            name={profile.name}
+            username={profile.username}
+            image={profile.image}
+            isVerified={isVerifiedSeller}
+            memberHref={memberPath(profile.username)}
+            showName={false}
+          />
 
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div className="space-y-1">

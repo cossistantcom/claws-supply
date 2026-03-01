@@ -20,9 +20,6 @@ import {
 } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  deleteTemplate,
-  publishTemplate,
-  unpublishTemplate,
   updateTemplate,
   type BlobUploadReferenceInput,
   type TemplateMutationDTO,
@@ -56,15 +53,6 @@ function toMetadataValues(template: TemplateMutationDTO): TemplateMetadataFormVa
     shortDescription: template.shortDescription,
     priceCents: template.priceCents,
   };
-}
-
-function mergePublishedVersionHistory(
-  current: TemplateVersionDTO[],
-  incoming: TemplateVersionDTO,
-) {
-  const withoutSameVersion = current.filter((item) => item.version !== incoming.version);
-
-  return [...withoutSameVersion, incoming].sort((a, b) => b.version - a.version);
 }
 
 function formatDate(isoDate: string) {
@@ -107,9 +95,6 @@ export function TemplateOwnerPanel({
   const [pendingCoverUpload, setPendingCoverUpload] =
     useState<BlobUploadReferenceInput | null>(null);
   const [isSavingEdits, setIsSavingEdits] = useState(false);
-  const [isPublishing, setIsPublishing] = useState(false);
-  const [isUnpublishing, setIsUnpublishing] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     setTemplate(initialTemplate);
@@ -177,84 +162,8 @@ export function TemplateOwnerPanel({
     }
   }
 
-  async function handlePublish() {
-    if (template.status === "deleted") {
-      return;
-    }
-
-    const notes = currentVersionNotesDraft.trim();
-    setIsPublishing(true);
-    try {
-      const published = await publishTemplate(template.slug, {
-        ...(pendingCoverUpload ? { coverUpload: pendingCoverUpload } : {}),
-        ...(notes.length >= 3 && notes !== (template.versionNotes ?? "")
-          ? { versionNotes: notes }
-          : {}),
-      });
-
-      setTemplate(published.template);
-      setMetadata(toMetadataValues(published.template));
-      setCurrentVersionNotesDraft(published.template.versionNotes ?? notes);
-      setVersions((current) => mergePublishedVersionHistory(current, published.version));
-      setPendingCoverUpload(null);
-      toast.success("Template published.");
-      router.refresh();
-    } catch (error) {
-      toast.error(resolveErrorMessage(error, "Unable to publish template."));
-    } finally {
-      setIsPublishing(false);
-    }
-  }
-
-  async function handleUnpublish() {
-    if (template.status !== "published") {
-      return;
-    }
-
-    setIsUnpublishing(true);
-    try {
-      const result = await unpublishTemplate(template.slug);
-      setTemplate((current) => ({
-        ...current,
-        status: result.status,
-        unpublishedAt: result.unpublishedAt,
-      }));
-      toast.success("Template unpublished.");
-      router.refresh();
-    } catch (error) {
-      toast.error(resolveErrorMessage(error, "Unable to unpublish template."));
-    } finally {
-      setIsUnpublishing(false);
-    }
-  }
-
-  async function handleDelete() {
-    if (template.status === "deleted") {
-      return;
-    }
-
-    const shouldDelete = window.confirm(
-      "Delete this template? This marks it as deleted and blocks further lifecycle edits.",
-    );
-    if (!shouldDelete) {
-      return;
-    }
-
-    setIsDeleting(true);
-    try {
-      await deleteTemplate(template.slug);
-      toast.success("Template deleted.");
-      router.push("/");
-      router.refresh();
-    } catch (error) {
-      toast.error(resolveErrorMessage(error, "Unable to delete template."));
-    } finally {
-      setIsDeleting(false);
-    }
-  }
-
   return (
-    <div className="space-y-6">
+    <div id="template-editor" className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle>Owner / Admin Panel</CardTitle>
@@ -355,7 +264,7 @@ export function TemplateOwnerPanel({
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
             <Button
               type="button"
               variant="outline"
@@ -369,55 +278,6 @@ export function TemplateOwnerPanel({
                 </>
               ) : (
                 "Save Edits"
-              )}
-            </Button>
-
-            {template.status !== "published" ? (
-              <Button
-                type="button"
-                onClick={handlePublish}
-                disabled={isPublishing || template.status === "deleted"}
-              >
-                {isPublishing ? (
-                  <>
-                    <Loader2Icon className="animate-spin" />
-                    Publishing...
-                  </>
-                ) : (
-                  "Publish"
-                )}
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleUnpublish}
-                disabled={isUnpublishing}
-              >
-                {isUnpublishing ? (
-                  <>
-                    <Loader2Icon className="animate-spin" />
-                    Unpublishing...
-                  </>
-                ) : (
-                  "Unpublish"
-                )}
-              </Button>
-            )}
-
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={isDeleting}
-            >
-              {isDeleting ? (
-                <>
-                  <Loader2Icon className="animate-spin" />
-                  Deleting...
-                </>
-              ) : (
-                "Delete"
               )}
             </Button>
           </div>

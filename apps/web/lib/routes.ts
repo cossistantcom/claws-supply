@@ -20,6 +20,10 @@ export function templatePath(templateSlug: string) {
   return `${OPENCLAW_TEMPLATE_BASE_PATH}/${templateSlug}`;
 }
 
+export function templateEditPath(templateSlug: string) {
+  return `${templatePath(templateSlug)}/edit`;
+}
+
 export function membersPath() {
   return MEMBERS_BASE_PATH;
 }

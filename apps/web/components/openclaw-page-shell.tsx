@@ -5,11 +5,13 @@ import { cn } from "@/lib/utils";
 type OpenClawPageShellProps = {
   children: React.ReactNode;
   contentClassName?: string;
+  rightSidebar?: React.ReactNode;
 };
 
 export function OpenClawPageShell({
   children,
   contentClassName,
+  rightSidebar,
 }: OpenClawPageShellProps) {
   return (
     <div className="grid w-full grid-cols-1 items-start md:grid-cols-[1fr_minmax(0,56rem)_1fr]">
@@ -25,7 +27,7 @@ export function OpenClawPageShell({
         {children}
       </div>
       <aside className="hidden lg:flex sticky top-40 h-[calc(100vh-6rem)] self-start justify-self-end">
-        <ExtraSidebar />
+        {rightSidebar ?? <ExtraSidebar />}
       </aside>
     </div>
   );

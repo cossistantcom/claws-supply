@@ -188,7 +188,8 @@ function parseTwitterIdToken(idToken: string) {
     const name = asString(claims.name) ?? username ?? id;
     const email = asString(claims.email);
     const emailVerified = asBoolean(claims.email_verified) ?? false;
-    const image = asString(claims.picture) ?? asString(claims.profile_image_url);
+    const image =
+      asString(claims.picture) ?? asString(claims.profile_image_url);
 
     return {
       id,
@@ -203,7 +204,9 @@ function parseTwitterIdToken(idToken: string) {
   }
 }
 
-async function fetchTwitterProfile(accessToken: string): Promise<TwitterProfile | null> {
+async function fetchTwitterProfile(
+  accessToken: string,
+): Promise<TwitterProfile | null> {
   const endpoints = [
     "https://api.x.com/2/users/me?user.fields=profile_image_url",
     "https://api.twitter.com/2/users/me?user.fields=profile_image_url",
@@ -237,7 +240,9 @@ async function fetchTwitterProfile(accessToken: string): Promise<TwitterProfile 
   return null;
 }
 
-async function fetchTwitterConfirmedEmail(accessToken: string): Promise<string | null> {
+async function fetchTwitterConfirmedEmail(
+  accessToken: string,
+): Promise<string | null> {
   const endpoints = [
     "https://api.x.com/2/users/me?user.fields=confirmed_email",
     "https://api.twitter.com/2/users/me?user.fields=confirmed_email",
@@ -324,7 +329,8 @@ function createAuth() {
           const userId = profile?.data?.id ?? idTokenData?.id;
           const username =
             profile?.data?.username?.toLowerCase() ?? idTokenData?.username;
-          const name = profile?.data?.name ?? idTokenData?.name ?? username ?? userId;
+          const name =
+            profile?.data?.name ?? idTokenData?.name ?? username ?? userId;
           const email =
             confirmedEmail ??
             profile?.data?.email ??
@@ -334,9 +340,7 @@ function createAuth() {
           const emailVerified =
             Boolean(confirmedEmail) || Boolean(idTokenData?.emailVerified);
           const image =
-            profile?.data?.profile_image_url ??
-            idTokenData?.image ??
-            undefined;
+            profile?.data?.profile_image_url ?? idTokenData?.image ?? undefined;
           const userMap = profile
             ? mapTwitterProfileToUser(profile)
             : {
@@ -407,14 +411,17 @@ function createAuth() {
           before: async (userRecord) => {
             const record = userRecord as Record<string, unknown>;
             const email =
-              typeof record.email === "string" ? record.email : USERNAME_FALLBACK;
+              typeof record.email === "string"
+                ? record.email
+                : USERNAME_FALLBACK;
 
             const usernameCandidate =
               (typeof record.xUsername === "string" && record.xUsername) ||
               (typeof record.username === "string" && record.username) ||
               getEmailLocalPart(email);
 
-            const uniqueUsername = await ensureUniqueUsername(usernameCandidate);
+            const uniqueUsername =
+              await ensureUniqueUsername(usernameCandidate);
 
             const resolved = {
               ...record,
