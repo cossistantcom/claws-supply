@@ -5,7 +5,7 @@ Bun + Turborepo monorepo.
 ## Workspace Layout
 
 - `apps/web`: Next.js App Router application (`@claws-supply/web`)
-- `packages`: reserved for future packages (CLI will live here later)
+- `packages/cli`: claws.supply creator CLI (`@claws-supply/cli`)
 
 ## Requirements
 

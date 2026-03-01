@@ -1,0 +1,41 @@
+{
+  "name": "@claws-supply/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "claws-supply": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "smoke:local": "node ./scripts/smoke-local.mjs"
+  },
+  "dependencies": {
+    "@vercel/blob": "^2.3.0",
+    "commander": "^14.0.0",
+    "fast-glob": "^3.3.3",
+    "fflate": "^0.8.2",
+    "fs-extra": "^11.3.2",
+    "kleur": "^4.1.5",
+    "ora": "^8.2.0",
+    "picomatch": "^4.0.3",
+    "prompts": "^2.4.2",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^20.19.13",
+    "@types/prompts": "^2.4.9",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}
