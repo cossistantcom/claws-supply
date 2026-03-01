@@ -50,7 +50,7 @@ export default async function Page() {
           <div className="flex-1 flex flex-col gap-4">
             <LobsterClawIcon className="size-20" />
             <h1 className="text-3xl sm:text-3xl md:text-4xl xl:text-5xl leading-[1.3] tracking-tight text-balance">
-              Explore and sell vetted OpenClaw templates.
+              Explore and share vetted OpenClaw templates.
             </h1>
 
             <p className="text-sm sm:text-base text-muted-foreground max-w-xl leading-relaxed">

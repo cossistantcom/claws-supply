@@ -23,7 +23,7 @@ export function LobsterClawIcon({ className }: { className?: string }) {
   return (
     <svg
       className={cn("shrink-0", className)}
-      viewBox="0 0 120 120"
+      viewBox="10 18 101 100"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden="true"
@@ -31,14 +31,14 @@ export function LobsterClawIcon({ className }: { className?: string }) {
     >
       <g filter={`url(#${folderShadowFilterId})`}>
         <path
-          d="M16 54 H44 L50 48 H70 V54 H116 V118 H16 Z"
+          d="M10 58 H38 L44 52 H64 V58 H110 V118 H10 Z"
           fill={`url(#${folderBackGradientId})`}
           stroke={`url(#${folderEdgeGradientId})`}
           strokeWidth={1.1}
         />
       </g>
 
-      <g transform="translate(16 14) scale(0.84)">
+      <g transform="translate(10 14) scale(0.84)">
         <g filter={`url(#${glowFilterId})`}>
           <path
             d="M60 10 C30 10 15 35 15 55 C15 75 30 95 45 100 L45 110 L55 110 L55 100 C55 100 60 102 65 100 L65 110 L75 110 L75 100 C90 95 105 75 105 55 C105 35 90 10 60 10Z"
@@ -144,27 +144,27 @@ export function LobsterClawIcon({ className }: { className?: string }) {
       </g>
 
       <path
-        d="M20 68 H112 V118 H20 Z"
+        d="M14 64 H106 V118 H14 Z"
         fill={`url(#${folderPocketGradientId})`}
         stroke={`url(#${folderEdgeGradientId})`}
         strokeWidth={1}
       />
       <path
-        d="M16 54 H116 V66 Q66 72 16 66 Z"
+        d="M10 54 H110 V64 Q60 69 10 64 Z"
         fill={`url(#${folderFlapGradientId})`}
         stroke={`url(#${folderEdgeGradientId})`}
         strokeWidth={1.1}
       />
 
       <path
-        d="M22 63 Q66 69 110 63"
+        d="M16 61 Q60 66 104 61"
         fill="none"
         stroke={`url(#${zipTrackGradientId})`}
         strokeWidth={2}
         strokeLinecap="round"
       />
       <path
-        d="M22 63 Q66 69 110 63"
+        d="M16 61 Q60 66 104 61"
         fill="none"
         stroke={`url(#${zipTeethGradientId})`}
         strokeWidth={1.35}
@@ -172,15 +172,15 @@ export function LobsterClawIcon({ className }: { className?: string }) {
         strokeLinecap="round"
       />
       <circle
-        cx="109"
-        cy="63"
+        cx="103"
+        cy="61"
         r="2.2"
         fill="none"
         stroke={`url(#${zipPullGradientId})`}
         strokeWidth={1.2}
       />
       <path
-        d="M107.4 64.8 H110.6 A2.2 2.2 0 0 1 112.8 67 V69.4 H107.4 Z"
+        d="M101.4 62.8 H104.6 A2.2 2.2 0 0 1 106.8 65 V67.4 H101.4 Z"
         fill={`url(#${zipPullGradientId})`}
         stroke={`url(#${zipTrackGradientId})`}
         strokeWidth={0.9}
@@ -189,9 +189,9 @@ export function LobsterClawIcon({ className }: { className?: string }) {
       <defs>
         <linearGradient
           id={folderBackGradientId}
-          x1="16"
-          y1="48"
-          x2="116"
+          x1="10"
+          y1="52"
+          x2="110"
           y2="118"
           gradientUnits="userSpaceOnUse"
         >
@@ -207,9 +207,9 @@ export function LobsterClawIcon({ className }: { className?: string }) {
 
         <linearGradient
           id={folderPocketGradientId}
-          x1="20"
-          y1="68"
-          x2="112"
+          x1="14"
+          y1="64"
+          x2="106"
           y2="118"
           gradientUnits="userSpaceOnUse"
         >
@@ -225,10 +225,10 @@ export function LobsterClawIcon({ className }: { className?: string }) {
 
         <linearGradient
           id={folderFlapGradientId}
-          x1="16"
+          x1="10"
           y1="54"
-          x2="116"
-          y2="72"
+          x2="110"
+          y2="69"
           gradientUnits="userSpaceOnUse"
         >
           <stop
@@ -243,9 +243,9 @@ export function LobsterClawIcon({ className }: { className?: string }) {
 
         <linearGradient
           id={folderEdgeGradientId}
-          x1="16"
-          y1="48"
-          x2="116"
+          x1="10"
+          y1="52"
+          x2="110"
           y2="118"
           gradientUnits="userSpaceOnUse"
         >
@@ -261,10 +261,10 @@ export function LobsterClawIcon({ className }: { className?: string }) {
 
         <linearGradient
           id={zipTrackGradientId}
-          x1="22"
-          y1="63"
-          x2="110"
-          y2="63"
+          x1="16"
+          y1="61"
+          x2="104"
+          y2="61"
           gradientUnits="userSpaceOnUse"
         >
           <stop
@@ -279,10 +279,10 @@ export function LobsterClawIcon({ className }: { className?: string }) {
 
         <linearGradient
           id={zipTeethGradientId}
-          x1="22"
-          y1="63"
-          x2="110"
-          y2="63"
+          x1="16"
+          y1="61"
+          x2="104"
+          y2="61"
           gradientUnits="userSpaceOnUse"
         >
           <stop
@@ -297,10 +297,10 @@ export function LobsterClawIcon({ className }: { className?: string }) {
 
         <linearGradient
           id={zipPullGradientId}
-          x1="107"
-          y1="62"
-          x2="113"
-          y2="70"
+          x1="101"
+          y1="60"
+          x2="107"
+          y2="68"
           gradientUnits="userSpaceOnUse"
         >
           <stop
