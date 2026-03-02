@@ -227,120 +227,120 @@ function createAuth() {
         clientSecret: X_CLIENT_SECRET!,
         disableDefaultScope: true,
         scope: [...X_OAUTH_SCOPES],
-        getUserInfo: async (token) => {
-          const accessToken = toNonEmptyString(
-            (token as { accessToken?: unknown }).accessToken,
-          );
+        // getUserInfo: async (token) => {
+        //   const accessToken = toNonEmptyString(
+        //     (token as { accessToken?: unknown }).accessToken,
+        //   );
 
-          if (!accessToken) {
-            console.error("[auth][x] missing access token in getUserInfo", {
-              token,
-            });
-            return null;
-          }
+        //   if (!accessToken) {
+        //     console.error("[auth][x] missing access token in getUserInfo", {
+        //       token,
+        //     });
+        //     return null;
+        //   }
 
-          let profileResponse: XApiResponse | null = null;
-          try {
-            profileResponse = await fetchXApi(
-              "https://api.x.com/2/users/me?user.fields=profile_image_url",
-              accessToken,
-            );
-          } catch (error) {
-            console.error("[auth][x] profile request failed", {
-              error: error instanceof Error ? error.message : "unknown_error",
-            });
-            return null;
-          }
+        //   let profileResponse: XApiResponse | null = null;
+        //   try {
+        //     profileResponse = await fetchXApi(
+        //       "https://api.x.com/2/users/me?user.fields=profile_image_url",
+        //       accessToken,
+        //     );
+        //   } catch (error) {
+        //     console.error("[auth][x] profile request failed", {
+        //       error: error instanceof Error ? error.message : "unknown_error",
+        //     });
+        //     return null;
+        //   }
 
-          console.log("[auth][x] profile response payload", profileResponse);
+        //   console.log("[auth][x] profile response payload", profileResponse);
 
-          if (
-            !profileResponse.ok ||
-            !profileResponse.body ||
-            typeof profileResponse.body !== "object"
-          ) {
-            return null;
-          }
+        //   if (
+        //     !profileResponse.ok ||
+        //     !profileResponse.body ||
+        //     typeof profileResponse.body !== "object"
+        //   ) {
+        //     return null;
+        //   }
 
-          const profile = profileResponse.body as TwitterProfile;
-          const profileData =
-            profile.data && typeof profile.data === "object"
-              ? profile.data
-              : null;
+        //   const profile = profileResponse.body as TwitterProfile;
+        //   const profileData =
+        //     profile.data && typeof profile.data === "object"
+        //       ? profile.data
+        //       : null;
 
-          if (!profileData) {
-            console.error("[auth][x] profile response missing data object", {
-              profile,
-            });
-            return null;
-          }
+        //   if (!profileData) {
+        //     console.error("[auth][x] profile response missing data object", {
+        //       profile,
+        //     });
+        //     return null;
+        //   }
 
-          let emailVerified = false;
-          let emailResponse: XApiResponse | null = null;
+        //   let emailVerified = false;
+        //   let emailResponse: XApiResponse | null = null;
 
-          try {
-            emailResponse = await fetchXApi(
-              "https://api.x.com/2/users/me?user.fields=confirmed_email",
-              accessToken,
-            );
-          } catch (error) {
-            console.error("[auth][x] confirmed email request failed", {
-              error: error instanceof Error ? error.message : "unknown_error",
-            });
-            emailResponse = null;
-          }
+        //   try {
+        //     emailResponse = await fetchXApi(
+        //       "https://api.x.com/2/users/me?user.fields=confirmed_email",
+        //       accessToken,
+        //     );
+        //   } catch (error) {
+        //     console.error("[auth][x] confirmed email request failed", {
+        //       error: error instanceof Error ? error.message : "unknown_error",
+        //     });
+        //     emailResponse = null;
+        //   }
 
-          console.log(
-            "[auth][x] confirmed email response payload",
-            emailResponse,
-          );
+        //   console.log(
+        //     "[auth][x] confirmed email response payload",
+        //     emailResponse,
+        //   );
 
-          if (
-            emailResponse?.ok &&
-            emailResponse.body &&
-            typeof emailResponse.body === "object"
-          ) {
-            const emailProfile = emailResponse.body as TwitterProfile;
-            const confirmedEmail = toNonEmptyString(
-              emailProfile.data?.confirmed_email,
-            );
+        //   if (
+        //     emailResponse?.ok &&
+        //     emailResponse.body &&
+        //     typeof emailResponse.body === "object"
+        //   ) {
+        //     const emailProfile = emailResponse.body as TwitterProfile;
+        //     const confirmedEmail = toNonEmptyString(
+        //       emailProfile.data?.confirmed_email,
+        //     );
 
-            if (confirmedEmail) {
-              profileData.email = confirmedEmail;
-              emailVerified = true;
-            }
-          }
+        //     if (confirmedEmail) {
+        //       profileData.email = confirmedEmail;
+        //       emailVerified = true;
+        //     }
+        //   }
 
-          const profileId = toNonEmptyString(profileData.id);
-          const profileUsername = toNonEmptyString(profileData.username);
-          const profileName = toNonEmptyString(profileData.name);
-          const profileEmail =
-            toNonEmptyString(profileData.email) ?? profileUsername ?? null;
-          const profileImage = toNonEmptyString(profileData.profile_image_url);
+        //   const profileId = toNonEmptyString(profileData.id);
+        //   const profileUsername = toNonEmptyString(profileData.username);
+        //   const profileName = toNonEmptyString(profileData.name);
+        //   const profileEmail =
+        //     toNonEmptyString(profileData.email) ?? profileUsername ?? null;
+        //   const profileImage = toNonEmptyString(profileData.profile_image_url);
 
-          if (!profileId) {
-            console.error("[auth][x] profile response missing user id", {
-              profile,
-            });
-            return null;
-          }
+        //   if (!profileId) {
+        //     console.error("[auth][x] profile response missing user id", {
+        //       profile,
+        //     });
+        //     return null;
+        //   }
 
-          const mappedUser = mapTwitterProfileToUser(profile);
+        //   const mappedUser = mapTwitterProfileToUser(profile);
 
-          return {
-            user: {
-              id: profileId,
-              name: profileName ?? profileUsername ?? profileId,
-              email: profileEmail,
-              image: profileImage ?? undefined,
-              emailVerified,
-              ...mappedUser,
-            },
-            data: profile,
-          };
-        },
+        //   return {
+        //     user: {
+        //       id: profileId,
+        //       name: profileName ?? profileUsername ?? profileId,
+        //       email: profileEmail,
+        //       image: profileImage ?? undefined,
+        //       emailVerified,
+        //       ...mappedUser,
+        //     },
+        //     data: profile,
+        //   };
+        // },
         mapProfileToUser: (profile) => {
-          return mapTwitterProfileToUser(profile as TwitterProfile);
+          return mapTwitterProfileToUser(profile);
         },
       },
     },
