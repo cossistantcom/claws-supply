@@ -51,6 +51,11 @@ export type TemplatePublishResult = {
   version: TemplateVersionDTO;
 };
 
+export type PaidTemplateAccess = {
+  hasAccess: boolean;
+  purchaseId: string | null;
+};
+
 export type TemplateDownloadResult = {
   stream: ReadableStream<Uint8Array>;
   contentType: string;
@@ -694,13 +699,6 @@ export async function listTemplateVersions(templateId: string): Promise<Template
 }
 
 async function canActorDownloadTemplate(actor: Actor, templateRow: TemplateRecord) {
-  if (isAdmin(actor) || actor.id === templateRow.sellerId) {
-    return {
-      hasAccess: true,
-      purchaseId: null as string | null,
-    };
-  }
-
   if (templateRow.priceCents === 0) {
     const owned = await ensureFreeTemplateOwnership({
       buyerId: actor.id,
@@ -711,6 +709,20 @@ async function canActorDownloadTemplate(actor: Actor, templateRow: TemplateRecor
     return {
       hasAccess: true,
       purchaseId: owned.purchaseId,
+    };
+  }
+
+  return getPaidTemplateAccessForActor(actor, templateRow);
+}
+
+export async function getPaidTemplateAccessForActor(
+  actor: Actor,
+  templateRow: Pick<TemplateRecord, "id" | "sellerId">,
+): Promise<PaidTemplateAccess> {
+  if (isAdmin(actor) || actor.id === templateRow.sellerId) {
+    return {
+      hasAccess: true,
+      purchaseId: null,
     };
   }
 

@@ -1,15 +1,18 @@
+import type { ReactNode } from "react";
 import { CopyButton } from "@/components/ui/copy-button";
 import { cn } from "@/lib/utils";
 
 type CommandCopyRowProps = {
   label: string;
   command: string;
+  action?: ReactNode;
   className?: string;
 };
 
 export function CommandCopyRow({
   label,
   command,
+  action,
   className,
 }: CommandCopyRowProps) {
   return (
@@ -21,7 +24,7 @@ export function CommandCopyRow({
         <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap px-2 text-sm sm:text-base">
           $ {command}
         </code>
-        <CopyButton value={command} ariaLabel={`Copy command for ${label}`} />
+        {action ?? <CopyButton value={command} ariaLabel={`Copy command for ${label}`} />}
       </div>
     </article>
   );

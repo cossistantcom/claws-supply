@@ -1,10 +1,13 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { CommandCopyRow } from "@/components/command-copy-row";
 import { ExtraSidebar } from "@/components/extra-sidebar";
 import { OpenClawPageShell } from "@/components/openclaw-page-shell";
 import { TemplateCard } from "@/components/template-card";
 import { TemplateCommentsSection } from "@/components/templates/template-comments-section";
+import { TemplatePurchaseCommandAction } from "@/components/templates/template-purchase-command-action";
+import { buttonVariants } from "@/components/ui/button";
 import { isAdmin } from "@/lib/auth/permissions";
 import { getSessionFromNextHeaders } from "@/lib/auth/session";
 import { getCategoryBySlug } from "@/lib/categories";
@@ -23,6 +26,8 @@ import {
   getTemplateDetailBySlugIncludingUnpublished,
   getPublishedTemplateBySlugCached,
 } from "@/lib/templates/read-service";
+import { getPaidTemplateAccessForActor } from "@/lib/templates/service";
+import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -127,6 +132,21 @@ export default async function TemplateDetailPage({ params }: TemplatePageProps) 
     templateUrl,
     categoryLabel: category?.label ?? null,
   });
+  const command = `npx claws-supply use ${detail.template.slug}`;
+  const isPaidTemplate = detail.template.priceCents > 0;
+  const paidTemplateAccess =
+    isPaidTemplate && session
+      ? await getPaidTemplateAccessForActor(
+          {
+            id: session.user.id,
+            role: session.user.role,
+          },
+          templateRow,
+        )
+      : null;
+  const canUseTemplateCommand = !isPaidTemplate || Boolean(paidTemplateAccess?.hasAccess);
+  const signInHref = `/auth/sign-in?next=${encodeURIComponent(templatePath(detail.template.slug))}`;
+  const purchaseLabel = formatPrice(detail.template.priceCents, detail.template.currency);
 
   return (
     <OpenClawPageShell
@@ -192,6 +212,43 @@ export default async function TemplateDetailPage({ params }: TemplatePageProps) 
           {detail.template.description}
         </p>
       </header>
+
+      <section className="space-y-2">
+        <CommandCopyRow
+          label={canUseTemplateCommand ? "USE THIS TEMPLATE" : "LOCKED COMMAND"}
+          command={command}
+          action={
+            !canUseTemplateCommand
+              ? session
+                ? (
+                    <TemplatePurchaseCommandAction
+                      templateSlug={detail.template.slug}
+                      priceLabel={purchaseLabel}
+                    />
+                  )
+                : (
+                    <Link
+                      href={signInHref}
+                      className={cn(
+                        buttonVariants({
+                          variant: "outline",
+                          size: "sm",
+                        }),
+                        "shrink-0 whitespace-nowrap",
+                      )}
+                    >
+                      Sign in to purchase
+                    </Link>
+                  )
+              : undefined
+          }
+        />
+        {isPaidTemplate && !canUseTemplateCommand ? (
+          <p className="text-xs text-muted-foreground">
+            This is a paid template. Purchase unlocks CLI usage and download access.
+          </p>
+        ) : null}
+      </section>
 
       {relatedTemplates.length > 0 ? (
         <section className="space-y-4">
