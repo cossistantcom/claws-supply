@@ -12,11 +12,12 @@ import {
   isNull,
   ne,
   or,
+  sql,
   type SQL,
 } from "drizzle-orm";
 import { CATEGORIES, isCategorySlug, type CategorySlug } from "@/lib/categories";
 import { db } from "@/lib/db";
-import { review, template, user } from "@/lib/db/schema";
+import { account, review, template, user } from "@/lib/db/schema";
 import { isUserVerified } from "@/lib/profile/verification";
 import { TemplateServiceError } from "./errors";
 import { deriveTemplateExcerptFromMarkdown } from "./form-helpers";
@@ -55,7 +56,7 @@ type TemplateReadRow = {
   sellerName: string;
   sellerImage: string | null;
   sellerStripeVerified: boolean;
-  sellerXAccountId: string | null;
+  sellerHasTwitterAccount: boolean;
   averageRating: string | null;
   reviewCount: number | null;
 };
@@ -164,7 +165,7 @@ function mapSeller(row: TemplateReadRow): PublicTemplateSeller {
     displayName: row.sellerName,
     avatarUrl: row.sellerImage,
     isVerified: isUserVerified({
-      hasVerifiedTwitterProfile: Boolean(row.sellerXAccountId),
+      hasVerifiedTwitterProfile: row.sellerHasTwitterAccount,
       hasVerifiedStripeIdentity: row.sellerStripeVerified,
     }),
   };
@@ -233,7 +234,12 @@ async function listTemplateRows(
       sellerName: user.name,
       sellerImage: user.image,
       sellerStripeVerified: user.stripeVerified,
-      sellerXAccountId: user.xAccountId,
+      sellerHasTwitterAccount: sql<boolean>`exists (
+        select 1
+        from ${account}
+        where ${account.userId} = ${user.id}
+          and ${account.providerId} = 'twitter'
+      )`,
       averageRating: reviewAggregate.averageRating,
       reviewCount: reviewAggregate.reviewCount,
     })

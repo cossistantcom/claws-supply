@@ -352,7 +352,9 @@ export function ProfileSettingsPage() {
                 <p className="text-sm">X Account</p>
                 <p className="text-xs text-muted-foreground">
                   {profile.x.linked
-                    ? `Linked as @${profile.x.username ?? "unknown"}.`
+                    ? profile.x.username
+                      ? `Linked as @${profile.x.username}.`
+                      : "X account linked."
                     : "Connect X to complete seller identity setup."}
                 </p>
               </div>

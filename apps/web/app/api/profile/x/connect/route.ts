@@ -1,7 +1,6 @@
 import { jsonError, jsonSuccess, resolveApiError } from "@/lib/api/response";
 import { getSessionFromRequest } from "@/lib/auth/session";
 import { auth } from "@/lib/auth-server";
-import { getProfileForUser } from "@/lib/profile/server";
 import type { ConnectXResponse } from "@/lib/profile/types";
 
 function readSetCookieHeaders(headers: Headers): string[] {
@@ -28,9 +27,14 @@ export async function POST(request: Request) {
   }
 
   try {
-    const profile = await getProfileForUser(session.user.id);
+    const linkedAccounts = await auth.api.listUserAccounts({
+      headers: request.headers,
+    });
+    const hasTwitterAccount = linkedAccounts.some(
+      (account) => account.providerId === "twitter",
+    );
 
-    if (profile.x.linked) {
+    if (hasTwitterAccount) {
       return jsonSuccess<ConnectXResponse>({
         url: null,
         alreadyLinked: true,
@@ -41,7 +45,7 @@ export async function POST(request: Request) {
       headers: request.headers,
       body: {
         provider: "twitter",
-        callbackURL: "/api/profile/x/complete",
+        callbackURL: "/profile",
         disableRedirect: true,
       },
       returnHeaders: true,

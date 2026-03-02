@@ -9,10 +9,11 @@ import {
   isNull,
   lt,
   or,
+  sql,
 } from "drizzle-orm";
 import { isAdmin } from "@/lib/auth/permissions";
 import { db } from "@/lib/db";
-import { template, templateComment, user } from "@/lib/db/schema";
+import { account, template, templateComment, user } from "@/lib/db/schema";
 import { isUserVerified } from "@/lib/profile/verification";
 import { TemplateCommentServiceError } from "./errors";
 import type {
@@ -44,7 +45,7 @@ type CommentReadRow = {
   authorUsername: string;
   authorName: string;
   authorAvatar: string | null;
-  authorXAccountId: string | null;
+  authorHasTwitterAccount: boolean;
   authorStripeVerified: boolean;
 };
 
@@ -156,7 +157,12 @@ export async function resolveCommentViewer(
     .select({
       id: user.id,
       role: user.role,
-      xAccountId: user.xAccountId,
+      hasTwitterAccount: sql<boolean>`exists (
+        select 1
+        from ${account}
+        where ${account.userId} = ${user.id}
+          and ${account.providerId} = 'twitter'
+      )`,
       stripeVerified: user.stripeVerified,
     })
     .from(user)
@@ -176,7 +182,7 @@ export async function resolveCommentViewer(
   const viewerContext: CommentViewerContext = {
     id: row.id,
     role: actor.role ?? row.role,
-    xAccountId: row.xAccountId,
+    hasTwitterAccount: row.hasTwitterAccount,
     stripeVerified: row.stripeVerified,
   };
 
@@ -186,7 +192,7 @@ export async function resolveCommentViewer(
       isAuthenticated: true,
       canPost:
         isAdmin(viewerContext) ||
-        Boolean(viewerContext.xAccountId) ||
+        viewerContext.hasTwitterAccount ||
         viewerContext.stripeVerified,
     },
   };
@@ -219,7 +225,7 @@ function mapCommentRow(options: {
       displayName: row.authorName,
       avatarUrl: row.authorAvatar,
       isVerified: isUserVerified({
-        hasVerifiedTwitterProfile: Boolean(row.authorXAccountId),
+        hasVerifiedTwitterProfile: row.authorHasTwitterAccount,
         hasVerifiedStripeIdentity: row.authorStripeVerified,
       }),
     },
@@ -314,7 +320,12 @@ export async function listTemplateCommentsBySlug(options: {
       authorUsername: user.username,
       authorName: user.name,
       authorAvatar: user.image,
-      authorXAccountId: user.xAccountId,
+      authorHasTwitterAccount: sql<boolean>`exists (
+        select 1
+        from ${account}
+        where ${account.userId} = ${user.id}
+          and ${account.providerId} = 'twitter'
+      )`,
       authorStripeVerified: user.stripeVerified,
     })
     .from(templateComment)
@@ -392,7 +403,12 @@ export async function getTemplateCommentById(options: {
       authorUsername: user.username,
       authorName: user.name,
       authorAvatar: user.image,
-      authorXAccountId: user.xAccountId,
+      authorHasTwitterAccount: sql<boolean>`exists (
+        select 1
+        from ${account}
+        where ${account.userId} = ${user.id}
+          and ${account.providerId} = 'twitter'
+      )`,
       authorStripeVerified: user.stripeVerified,
     })
     .from(templateComment)

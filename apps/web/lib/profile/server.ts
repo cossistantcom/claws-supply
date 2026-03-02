@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { user } from "@/lib/db/schema";
+import { account, user } from "@/lib/db/schema";
 import { getStripeClient } from "@/lib/stripe";
 import type { ProfileDTO, ProfileUpdateInput, StripeStatusDTO } from "./types";
 
@@ -14,11 +14,15 @@ type ProfileRow = {
   name: string;
   bio: string | null;
   image: string | null;
-  xAccountId: string | null;
   xUsername: string | null;
   xLinkedAt: Date | null;
   stripeAccountId: string | null;
   stripeVerified: boolean;
+};
+
+type TwitterAccountRow = {
+  accountId: string;
+  createdAt: Date;
 };
 
 type StripeStatusOptions = {
@@ -36,7 +40,13 @@ function getDisconnectedStripeStatus(): StripeStatusDTO {
   };
 }
 
-function mapProfile(row: ProfileRow, stripeStatus: StripeStatusDTO): ProfileDTO {
+function mapProfile(
+  row: ProfileRow,
+  stripeStatus: StripeStatusDTO,
+  twitterAccount: TwitterAccountRow | null,
+): ProfileDTO {
+  const linkedAt = twitterAccount?.createdAt ?? row.xLinkedAt;
+
   return {
     id: row.id,
     username: row.username,
@@ -44,10 +54,10 @@ function mapProfile(row: ProfileRow, stripeStatus: StripeStatusDTO): ProfileDTO 
     bio: row.bio,
     image: row.image,
     x: {
-      linked: Boolean(row.xAccountId),
+      linked: Boolean(twitterAccount),
       username: row.xUsername,
-      accountId: row.xAccountId,
-      linkedAt: row.xLinkedAt ? row.xLinkedAt.toISOString() : null,
+      accountId: twitterAccount?.accountId ?? null,
+      linkedAt: linkedAt ? linkedAt.toISOString() : null,
     },
     stripe: stripeStatus,
   };
@@ -70,7 +80,6 @@ async function getProfileRowById(userId: string): Promise<ProfileRow> {
       name: user.name,
       bio: user.bio,
       image: user.image,
-      xAccountId: user.xAccountId,
       xUsername: user.xUsername,
       xLinkedAt: user.xLinkedAt,
       stripeAccountId: user.stripeAccountId,
@@ -85,6 +94,20 @@ async function getProfileRowById(userId: string): Promise<ProfileRow> {
   }
 
   return record;
+}
+
+async function getTwitterAccountForUser(userId: string): Promise<TwitterAccountRow | null> {
+  const [twitterAccount] = await db
+    .select({
+      accountId: account.accountId,
+      createdAt: account.createdAt,
+    })
+    .from(account)
+    .where(and(eq(account.userId, userId), eq(account.providerId, "twitter")))
+    .orderBy(desc(account.createdAt))
+    .limit(1);
+
+  return twitterAccount ?? null;
 }
 
 async function getStripeStatusFromRow(
@@ -199,10 +222,13 @@ export function validateProfileUpdateInput(input: unknown): ProfileUpdateInput {
 }
 
 export async function getProfileForUser(userId: string): Promise<ProfileDTO> {
-  const row = await getProfileRowById(userId);
+  const [row, twitterAccount] = await Promise.all([
+    getProfileRowById(userId),
+    getTwitterAccountForUser(userId),
+  ]);
   const stripeStatus = await getStripeStatusFromRow(row);
 
-  return mapProfile(row, stripeStatus);
+  return mapProfile(row, stripeStatus, twitterAccount);
 }
 
 export async function updateProfileForUser(
@@ -283,4 +309,3 @@ export async function createStripeConnectOnboardingLink(
     accountId: stripeAccountId,
   };
 }
-

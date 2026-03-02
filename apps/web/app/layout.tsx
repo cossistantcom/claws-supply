@@ -9,6 +9,7 @@ import { getSessionFromNextHeaders } from "@/lib/auth/session";
 import { absoluteUrl, getDefaultOgImagePath, getSiteUrl } from "@/lib/seo";
 import "./globals.css";
 import { MainProviders } from "./providers";
+import Script from "next/script";
 
 const SITE_URL = getSiteUrl();
 const DEFAULT_OG_IMAGE_URL = absoluteUrl(getDefaultOgImagePath());
@@ -69,6 +70,12 @@ export default async function RootLayout({
       className={`dark ${GeistPixelSquare.variable} ${GeistMono.variable}`}
     >
       <body className="font-mono antialiased bg-background text-foreground min-h-screen">
+        <Script
+          data-website-id="dfid_wmEet4rNZJvfDIEP784LA"
+          data-domain="claws.supply"
+          src="https://datafa.st/js/script.js"
+          strategy="afterInteractive"
+        />
         <RootProvider theme={{ enabled: false }}>
           <MainProviders>
             <Navbar user={navbarUser} />

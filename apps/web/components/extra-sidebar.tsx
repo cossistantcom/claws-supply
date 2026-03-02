@@ -30,6 +30,10 @@ type TemplateCompactSidebarProps = {
     status: SidebarTemplateStatus;
     version: number | null;
   };
+  discoveryLinks: Array<{
+    label: string;
+    href: string;
+  }>;
   canManageTemplate: boolean;
 };
 
@@ -61,21 +65,25 @@ export async function ExtraSidebar(props: ExtraSidebarProps = { variant: "commun
   if (props.variant === "templateCompact") {
     const seller = props.seller;
     const template = props.template;
+    const sellerHref = memberPath(seller.username);
 
     return (
       <div className="flex w-80 flex-col gap-4 pr-4 text-xs">
         <section className="mt-10 border border-border bg-background/70 p-4">
           <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
-            Template Seller
+            Template by
           </p>
           <div className="mt-3 space-y-3">
-            <ProfileSellerIdentity
-              name={seller.displayName}
-              username={seller.username}
-              image={seller.avatarUrl}
-              isVerified={seller.isVerified}
-              memberHref={memberPath(seller.username)}
-            />
+            <Link href={sellerHref} className="block hover:opacity-90 transition-opacity">
+              <ProfileSellerIdentity
+                name={seller.displayName}
+                username={seller.username}
+                image={seller.avatarUrl}
+                isVerified={seller.isVerified}
+                showName={false}
+                showStatusBadge={false}
+              />
+            </Link>
 
             <div className="space-y-2 border border-border p-3 text-[11px]">
               <p className="text-xs uppercase tracking-wide text-foreground">
@@ -99,6 +107,23 @@ export async function ExtraSidebar(props: ExtraSidebarProps = { variant: "commun
                 Edit template
               </Link>
             ) : null}
+          </div>
+        </section>
+
+        <section className="border border-border bg-background/70 p-4">
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+            Explore
+          </p>
+          <div className="mt-3 flex flex-col gap-2 text-xs">
+            {props.discoveryLinks.map((discoveryLink) => (
+              <Link
+                key={discoveryLink.href}
+                href={discoveryLink.href}
+                className="hover:underline"
+              >
+                {discoveryLink.label}
+              </Link>
+            ))}
           </div>
         </section>
       </div>

@@ -45,6 +45,6 @@ export type TemplateCommentConnection = {
 export type CommentViewerContext = {
   id: string;
   role?: string | null;
-  xAccountId: string | null;
+  hasTwitterAccount: boolean;
   stripeVerified: boolean;
 };

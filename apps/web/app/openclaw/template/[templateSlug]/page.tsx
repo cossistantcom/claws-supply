@@ -103,6 +103,24 @@ export default async function TemplateDetailPage({ params }: TemplatePageProps) 
 
   const category = getCategoryBySlug(detail.template.category);
   const relatedTemplates = detail.relatedTemplates;
+  const discoveryLinks = [
+    ...(category
+      ? [
+          {
+            label: `Browse ${category.label}`,
+            href: categoryPath(category.slug),
+          },
+        ]
+      : []),
+    {
+      label: "Latest templates",
+      href: discoveryPath("latest"),
+    },
+    {
+      label: "Popular templates",
+      href: discoveryPath("popular"),
+    },
+  ];
   const templateUrl = absoluteUrl(templatePath(detail.template.slug));
   const productJsonLd = buildTemplateProductJsonLd({
     detail,
@@ -127,6 +145,7 @@ export default async function TemplateDetailPage({ params }: TemplatePageProps) 
             status: templateRow.status,
             version: detail.template.version,
           }}
+          discoveryLinks={discoveryLinks}
           canManageTemplate={canManageTemplate}
         />
       )}
@@ -169,39 +188,10 @@ export default async function TemplateDetailPage({ params }: TemplatePageProps) 
           </div>
         </div>
 
-        <p className="max-w-3xl text-sm text-muted-foreground">{detail.template.excerpt}</p>
-
-        {detail.template.versionNotes ? (
-          <div className="border border-border bg-muted/20 p-3 text-xs">
-            <p className="uppercase tracking-wide text-muted-foreground">What&apos;s New</p>
-            <p className="mt-1">
-              {detail.template.version ? `v${detail.template.version}: ` : ""}
-              {detail.template.versionNotes}
-            </p>
-          </div>
-        ) : null}
-
-        <div className="flex flex-wrap items-center gap-4 text-xs">
-          {category ? (
-            <Link className="hover:underline" href={categoryPath(category.slug)}>
-              Browse {category.label}
-            </Link>
-          ) : null}
-          <Link className="hover:underline" href={discoveryPath("latest")}>
-            Latest templates
-          </Link>
-          <Link className="hover:underline" href={discoveryPath("popular")}>
-            Popular templates
-          </Link>
-        </div>
-      </header>
-
-      <section className="space-y-3">
-        <h2 className="text-lg">Template Overview</h2>
         <p className="max-w-3xl text-sm text-muted-foreground">
           {detail.template.description}
         </p>
-      </section>
+      </header>
 
       {relatedTemplates.length > 0 ? (
         <section className="space-y-4">
@@ -214,9 +204,36 @@ export default async function TemplateDetailPage({ params }: TemplatePageProps) 
         </section>
       ) : null}
 
+      {detail.template.versionNotes ? (
+        <section>
+          <details className="border border-border bg-muted/20 p-3 text-xs">
+            <summary className="cursor-pointer uppercase tracking-wide text-muted-foreground">
+              What&apos;s New
+            </summary>
+            <p className="mt-2">
+              {detail.template.version ? `v${detail.template.version}: ` : ""}
+              {detail.template.versionNotes}
+            </p>
+          </details>
+        </section>
+      ) : null}
+
       {templateRow.status === "published" ? (
         <TemplateCommentsSection templateSlug={detail.template.slug} />
       ) : null}
+
+      <section className="lg:hidden border border-border bg-background/70 p-4">
+        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+          Explore
+        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-4 text-xs">
+          {discoveryLinks.map((discoveryLink) => (
+            <Link key={discoveryLink.href} className="hover:underline" href={discoveryLink.href}>
+              {discoveryLink.label}
+            </Link>
+          ))}
+        </div>
+      </section>
     </OpenClawPageShell>
   );
 }

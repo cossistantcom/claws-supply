@@ -1,9 +1,9 @@
 import "server-only";
 
 import { unstable_cache } from "next/cache";
-import { desc, eq, gte, ilike, or, type SQL } from "drizzle-orm";
+import { desc, eq, gte, ilike, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { user } from "@/lib/db/schema";
+import { account, user } from "@/lib/db/schema";
 import { isUserVerified } from "@/lib/profile/verification";
 import type {
   CommunitySidebarSnapshot,
@@ -24,7 +24,7 @@ type MemberRow = {
   name: string;
   bio: string | null;
   image: string | null;
-  xAccountId: string | null;
+  hasTwitterAccount: boolean;
   stripeVerified: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -55,7 +55,7 @@ function normalizeDirectoryInput(
 }
 
 function mapPublicMember(row: MemberRow): PublicMember {
-  const hasVerifiedTwitterProfile = Boolean(row.xAccountId);
+  const hasVerifiedTwitterProfile = row.hasTwitterAccount;
   const hasVerifiedStripeIdentity = row.stripeVerified;
 
   return {
@@ -98,7 +98,12 @@ async function listMemberRows(options: {
       name: user.name,
       bio: user.bio,
       image: user.image,
-      xAccountId: user.xAccountId,
+      hasTwitterAccount: sql<boolean>`exists (
+        select 1
+        from ${account}
+        where ${account.userId} = ${user.id}
+          and ${account.providerId} = 'twitter'
+      )`,
       stripeVerified: user.stripeVerified,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
@@ -161,7 +166,12 @@ export async function getPublicMemberByUsername(
       name: user.name,
       bio: user.bio,
       image: user.image,
-      xAccountId: user.xAccountId,
+      hasTwitterAccount: sql<boolean>`exists (
+        select 1
+        from ${account}
+        where ${account.userId} = ${user.id}
+          and ${account.providerId} = 'twitter'
+      )`,
       stripeVerified: user.stripeVerified,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
