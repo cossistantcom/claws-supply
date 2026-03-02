@@ -1,4 +1,6 @@
-import { handleRouteError, parseSlugParams, requireSessionOrThrow } from "@/lib/api/route-helpers";
+import { handleRouteError, parseSlugParams } from "@/lib/api/route-helpers";
+import { getSessionFromRequest } from "@/lib/auth/session";
+import { requireCliActorFromBearer } from "@/lib/cli/auth";
 import { getTemplateDownloadForActor } from "@/lib/templates/service";
 
 type RouteContext = {
@@ -13,13 +15,29 @@ function escapeFilename(value: string): string {
 
 export async function GET(request: Request, context: RouteContext) {
   try {
-    const session = await requireSessionOrThrow(request);
     const slug = await parseSlugParams(context.params);
-    const download = await getTemplateDownloadForActor(
-      {
+    const session = await getSessionFromRequest(request);
+
+    let actor: {
+      id: string;
+      role?: string | null;
+    } | null = null;
+
+    if (session) {
+      actor = {
         id: session.user.id,
         role: session.user.role,
-      },
+      };
+    } else if (request.headers.get("authorization")) {
+      const cliActor = await requireCliActorFromBearer(request);
+      actor = {
+        id: cliActor.id,
+        role: cliActor.role,
+      };
+    }
+
+    const download = await getTemplateDownloadForActor(
+      actor,
       slug,
     );
 

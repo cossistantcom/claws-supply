@@ -15,6 +15,7 @@ export type AuthCommandOptions = {
   clientId?: string;
   open?: boolean;
   json?: boolean;
+  suppressHeader?: boolean;
 };
 
 export async function runAuthCommand(options: AuthCommandOptions): Promise<void> {
@@ -24,7 +25,9 @@ export async function runAuthCommand(options: AuthCommandOptions): Promise<void>
   const clientId = options.clientId ?? DEFAULT_CLIENT_ID;
   const shouldOpen = options.open ?? true;
 
-  printHeader({ json: jsonMode, logger });
+  if (!(options.suppressHeader ?? false)) {
+    printHeader({ json: jsonMode, logger });
+  }
 
   const startSpinner = createSpinner({
     enabled: !jsonMode,

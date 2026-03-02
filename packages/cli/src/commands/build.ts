@@ -61,40 +61,45 @@ async function promptForMetadata(input: {
   slug: string;
 }> {
   const defaultTitle = input.existingTitle ?? path.basename(input.sourceDir);
-  const defaultSlug = input.existingSlug ?? slugify(defaultTitle);
+  const titleResponse = await prompts({
+    type: "text",
+    name: "title",
+    message: "Template title",
+    initial: defaultTitle,
+    validate: (value: string) => (value.trim().length >= 3 ? true : "Title must be at least 3 characters."),
+  });
 
-  const response = await prompts([
-    {
-      type: "text",
-      name: "title",
-      message: "Template title",
-      initial: defaultTitle,
-      validate: (value: string) => (value.trim().length >= 3 ? true : "Title must be at least 3 characters."),
-    },
-    {
-      type: "text",
-      name: "slug",
-      message: "Template slug",
-      initial: defaultSlug,
-      validate: (value: string) => {
-        const normalized = value.trim();
-        if (normalized.length < 3 || normalized.length > 120 || !SLUG_REGEX.test(normalized)) {
-          return "Slug must be lowercase, URL-safe, and 3-120 chars.";
-        }
-        return true;
-      },
-    },
-  ]);
+  if (!titleResponse.title) {
+    throw new CliError("Build canceled.", {
+      exitCode: EXIT_CODES.SUCCESS,
+    });
+  }
 
-  if (!response.title || !response.slug) {
+  const title = titleResponse.title.trim();
+  const defaultSlug = input.existingSlug ?? slugify(title);
+  const slugResponse = await prompts({
+    type: "text",
+    name: "slug",
+    message: "Template slug",
+    initial: defaultSlug,
+    validate: (value: string) => {
+      const normalized = value.trim();
+      if (normalized.length < 3 || normalized.length > 120 || !SLUG_REGEX.test(normalized)) {
+        return "Slug must be lowercase, URL-safe, and 3-120 chars.";
+      }
+      return true;
+    },
+  });
+
+  if (!slugResponse.slug) {
     throw new CliError("Build canceled.", {
       exitCode: EXIT_CODES.SUCCESS,
     });
   }
 
   return {
-    title: response.title.trim(),
-    slug: response.slug.trim(),
+    title,
+    slug: slugResponse.slug.trim(),
   };
 }
 

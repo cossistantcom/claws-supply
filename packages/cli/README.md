@@ -13,6 +13,7 @@ npx claws-supply@latest --help
 npx claws-supply@latest auth
 npx claws-supply@latest build
 npx claws-supply@latest publish
+npx claws-supply@latest use <template-slug>
 ```
 
 Commands:
@@ -21,6 +22,7 @@ Commands:
 - `claws-supply logout` — clear local auth state
 - `claws-supply build` — build and sign a local template artifact
 - `claws-supply publish` — upload and publish latest artifact as draft
+- `claws-supply use <template-slug>` — download and apply a template to `./.openclaw/workspace`
 
 ## Default Source Behavior
 

@@ -74,6 +74,7 @@ Run from your template project folder:
 npx claws-supply@latest auth
 npx claws-supply@latest build
 npx claws-supply@latest publish
+npx claws-supply@latest use <template-slug>
 ```
 
 CLI defaults:

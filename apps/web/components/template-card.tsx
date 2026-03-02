@@ -1,6 +1,7 @@
 import { getCategoryBySlug } from "@/lib/categories";
+import { MemberAvatar } from "@/components/members/member-avatar";
 import type { PublicTemplateCard } from "@/lib/templates/public-types";
-import { categoryPath, templatePath } from "@/lib/routes";
+import { memberPath, templatePath } from "@/lib/routes";
 import Link from "next/link";
 
 function formatPrice(priceCents: number, currency: string) {
@@ -24,22 +25,15 @@ export function TemplateCard({ template, showCategory = false }: TemplateCardPro
   const category = getCategoryBySlug(template.category);
 
   return (
-    <article className="border border-border bg-background/70 p-4 flex flex-col gap-4">
+    <article className="relative flex flex-col gap-4 border border-border bg-background/70 p-4 transition-colors hover:border-cossistant-orange/40 focus-within:border-cossistant-orange/40">
       {showCategory && category ? (
-        <Link
-          href={categoryPath(category.slug)}
-          className="w-fit text-[10px] tracking-wide uppercase text-muted-foreground hover:text-foreground transition-colors"
-        >
+        <p className="w-fit text-[10px] tracking-wide uppercase text-muted-foreground">
           {category.label}
-        </Link>
+        </p>
       ) : null}
 
       <div className="space-y-2">
-        <h3 className="text-base leading-tight">
-          <Link className="hover:underline" href={templatePath(template.slug)}>
-            {template.title}
-          </Link>
-        </h3>
+        <h3 className="text-base leading-tight">{template.title}</h3>
         <p className="text-xs leading-relaxed text-muted-foreground">
           {template.excerpt}
         </p>
@@ -53,14 +47,27 @@ export function TemplateCard({ template, showCategory = false }: TemplateCardPro
       </div>
 
       <div className="mt-auto flex items-center justify-between border-t border-border pt-3 text-[11px]">
-        <p className="text-muted-foreground">by @{template.seller.username}</p>
         <Link
-          className="text-xs hover:underline underline-offset-4"
-          href={templatePath(template.slug)}
+          className="relative z-20 inline-flex items-center gap-2 text-muted-foreground transition-colors hover:text-foreground"
+          href={memberPath(template.seller.username)}
         >
-          View Template
+          <MemberAvatar
+            name={template.seller.displayName}
+            username={template.seller.username}
+            image={template.seller.avatarUrl}
+            className="size-5 border-border"
+            fallbackClassName="text-[8px]"
+          />
+          <span>@{template.seller.username}</span>
         </Link>
+        <p className="text-xs text-muted-foreground">View Template</p>
       </div>
+
+      <Link
+        href={templatePath(template.slug)}
+        aria-label={`View template ${template.title}`}
+        className="absolute inset-0 z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+      />
     </article>
   );
 }

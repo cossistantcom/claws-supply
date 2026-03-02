@@ -3,6 +3,7 @@ import { runAuthCommand, type AuthCommandOptions } from "./commands/auth";
 import { runBuildCommand, type BuildCommandOptions } from "./commands/build";
 import { runLogoutCommand, type LogoutCommandOptions } from "./commands/logout";
 import { runPublishCommand, type PublishCommandOptions } from "./commands/publish";
+import { runUseCommand, type UseCommandOptions } from "./commands/use";
 import { DEFAULT_CLIENT_ID } from "./lib/constants";
 import { EXIT_CODES, normalizeError } from "./utils/errors";
 import { createLogger, formatErrorMessage } from "./utils/logger";
@@ -23,6 +24,7 @@ Local testing tutorial:
      node dist/index.js auth -D
      node dist/index.js build -D
      node dist/index.js publish -D
+     node dist/index.js use demo-template -D
      --source . is optional and equivalent to the default current folder.
 
 Testing this CLI from another folder:
@@ -38,6 +40,7 @@ Testing this CLI from another folder:
     npm install -D /absolute/path/to/hourglass/packages/cli/claws-supply-0.1.0.tgz
     npx claws-supply@latest build -D
     npx claws-supply@latest publish -D
+    npx claws-supply@latest use demo-template -D
 
   Option C (global linked command):
     cd /absolute/path/to/hourglass/packages/cli
@@ -45,6 +48,7 @@ Testing this CLI from another folder:
     cd /path/to/another/project
     claws-supply build -D
     claws-supply publish -D
+    claws-supply use demo-template -D
 
 Different source directory than your current folder:
   claws-supply build -D --source /absolute/path/to/project
@@ -73,6 +77,10 @@ function toHint(error: ReturnType<typeof normalizeError>): string | undefined {
 
   if (error.status === 429) {
     return "Rate limit reached. Wait briefly and retry.";
+  }
+
+  if (error.status === 403) {
+    return "If this template is paid, purchase access from claws.supply and retry.";
   }
 
   return undefined;
@@ -166,6 +174,20 @@ export function createProgram(): Command {
     .option("--artifact <path>", "Path to a built zip artifact")
     .option("--json", "Emit machine-readable JSON output")
     .action(wrapCommand<PublishCommandOptions>(runPublishCommand));
+
+  program
+    .command("use <templateSlug>")
+    .description("Download and apply a template to ./.openclaw/workspace")
+    .option("-D, --dev", "Use local API at http://localhost:3039")
+    .option("--yes", "Use defaults and skip interactive prompts")
+    .option("--client-id <id>", "Device auth client ID", DEFAULT_CLIENT_ID)
+    .option("--no-open", "Do not auto-open browser during inline auth")
+    .option("--json", "Emit machine-readable JSON output")
+    .action((templateSlug: string, options: UseCommandOptions) =>
+      wrapCommand<UseCommandOptions>((inputOptions) =>
+        runUseCommand(templateSlug, inputOptions),
+      )(options),
+    );
 
   return program;
 }

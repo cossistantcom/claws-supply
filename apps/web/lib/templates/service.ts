@@ -63,6 +63,17 @@ export type TemplateDownloadResult = {
   size: number | null;
 };
 
+type TemplateDownloadAccess =
+  | {
+      hasAccess: true;
+      purchaseId: string | null;
+      actorId: string | null;
+    }
+  | {
+      hasAccess: false;
+      reason: "unauthenticated" | "forbidden";
+    };
+
 const DEFAULT_CLI_TEMPLATE_DESCRIPTION =
   "This draft was created via the claws-supply CLI publish flow. Add your full template description, category context, and pricing details before publishing.";
 
@@ -698,8 +709,19 @@ export async function listTemplateVersions(templateId: string): Promise<Template
   return rows.map(mapTemplateVersionDTO);
 }
 
-async function canActorDownloadTemplate(actor: Actor, templateRow: TemplateRecord) {
+async function canActorDownloadTemplate(
+  actor: Actor | null,
+  templateRow: TemplateRecord,
+): Promise<TemplateDownloadAccess> {
   if (templateRow.priceCents === 0) {
+    if (!actor) {
+      return {
+        hasAccess: true,
+        purchaseId: null,
+        actorId: null,
+      };
+    }
+
     const owned = await ensureFreeTemplateOwnership({
       buyerId: actor.id,
       sellerId: templateRow.sellerId,
@@ -709,10 +731,30 @@ async function canActorDownloadTemplate(actor: Actor, templateRow: TemplateRecor
     return {
       hasAccess: true,
       purchaseId: owned.purchaseId,
+      actorId: actor.id,
     };
   }
 
-  return getPaidTemplateAccessForActor(actor, templateRow);
+  if (!actor) {
+    return {
+      hasAccess: false,
+      reason: "unauthenticated",
+    };
+  }
+
+  const paidAccess = await getPaidTemplateAccessForActor(actor, templateRow);
+  if (!paidAccess.hasAccess) {
+    return {
+      hasAccess: false,
+      reason: "forbidden",
+    };
+  }
+
+  return {
+    hasAccess: true,
+    purchaseId: paidAccess.purchaseId,
+    actorId: actor.id,
+  };
 }
 
 export async function getPaidTemplateAccessForActor(
@@ -784,7 +826,7 @@ function withStreamCompletionHook(
 }
 
 export async function getTemplateDownloadForActor(
-  actor: Actor,
+  actor: Actor | null,
   slug: string,
 ): Promise<TemplateDownloadResult> {
   const templateRow = await requireTemplateRecordBySlug(slug);
@@ -807,6 +849,13 @@ export async function getTemplateDownloadForActor(
 
   const access = await canActorDownloadTemplate(actor, templateRow);
   if (!access.hasAccess) {
+    if (access.reason === "unauthenticated") {
+      throw new TemplateServiceError("Unauthorized.", {
+        code: "UNAUTHORIZED",
+        status: 401,
+      });
+    }
+
     throw new TemplateServiceError("You do not have access to this template.", {
       code: "FORBIDDEN",
       status: 403,
@@ -842,13 +891,17 @@ export async function getTemplateDownloadForActor(
       .where(eq(template.id, templateRow.id));
   });
 
-  const stream = withStreamCompletionHook(blobResult.stream, async () => {
-    await recordTemplateDownloadCompleted({
-      purchaseId: access.purchaseId,
-      buyerId: actor.id,
-      templateId: templateRow.id,
-    });
-  });
+  const actorId = access.actorId;
+  const stream =
+    actorId === null
+      ? blobResult.stream
+      : withStreamCompletionHook(blobResult.stream, async () => {
+          await recordTemplateDownloadCompleted({
+            purchaseId: access.purchaseId,
+            buyerId: actorId,
+            templateId: templateRow.id,
+          });
+        });
 
   return {
     stream,

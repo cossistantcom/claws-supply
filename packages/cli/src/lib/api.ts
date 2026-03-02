@@ -6,17 +6,20 @@ import {
   DeviceTokenResponseSchema,
   PublishFinalizeResponseSchema,
   SlugAvailabilityResponseSchema,
+  TemplateDetailResponseSchema,
   ZipUploadTokenResponseSchema,
   type DeviceCodeResponse,
   type DeviceTokenResponse,
   type PublishFinalizeResponse,
   type SlugAvailabilityResponse,
+  type TemplateDetailResponse,
   type ZipUploadTokenResponse,
 } from "../schemas/api";
 import { USER_AGENT } from "./constants";
 import { CliError, EXIT_CODES } from "../utils/errors";
 
 const DEFAULT_TIMEOUT_MS = 15_000;
+const DOWNLOAD_TIMEOUT_MS = 120_000;
 
 type RequestOptions<T> = {
   baseUrl: string;
@@ -26,6 +29,13 @@ type RequestOptions<T> = {
   token?: string;
   schema: ZodType<T>;
   timeoutMs?: number;
+};
+
+export type TemplateArchiveDownloadResponse = {
+  zipBytes: Uint8Array;
+  fileName: string | null;
+  contentType: string | null;
+  contentLength: number | null;
 };
 
 export class ApiHttpError extends CliError {
@@ -63,6 +73,40 @@ function parseRetryAfterSeconds(headerValue: string | null): number | undefined 
 
 function normalizeBaseUrl(baseUrl: string): string {
   return baseUrl.replace(/\/+$/, "");
+}
+
+function isRetriableCliError(error: CliError): boolean {
+  return (
+    error.message.startsWith("Network request failed:") ||
+    error.message.startsWith("Request timed out:")
+  );
+}
+
+function parseContentDispositionFilename(value: string | null): string | null {
+  if (!value) {
+    return null;
+  }
+
+  const encodedMatch = value.match(/filename\*=UTF-8''([^;]+)/i);
+  if (encodedMatch?.[1]) {
+    try {
+      return decodeURIComponent(encodedMatch[1]);
+    } catch {
+      return encodedMatch[1];
+    }
+  }
+
+  const quotedMatch = value.match(/filename="([^"]+)"/i);
+  if (quotedMatch?.[1]) {
+    return quotedMatch[1];
+  }
+
+  const plainMatch = value.match(/filename=([^;]+)/i);
+  if (plainMatch?.[1]) {
+    return plainMatch[1].trim();
+  }
+
+  return null;
 }
 
 async function parseJsonSafe(response: Response): Promise<unknown> {
@@ -160,14 +204,113 @@ export async function requestWithRetry<T>(options: RequestOptions<T>): Promise<T
     }
 
     if (error instanceof CliError) {
-      const retriable =
-        error.message.startsWith("Network request failed:") ||
-        error.message.startsWith("Request timed out:");
-      if (!retriable) {
+      if (!isRetriableCliError(error)) {
         throw error;
       }
 
       return executeRequest(options);
+    }
+
+    throw error;
+  }
+}
+
+async function executeTemplateArchiveDownload(input: {
+  baseUrl: string;
+  slug: string;
+  token?: string;
+  timeoutMs?: number;
+}): Promise<TemplateArchiveDownloadResponse> {
+  const endpoint = `${normalizeBaseUrl(input.baseUrl)}/api/templates/${encodeURIComponent(input.slug)}/download`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => {
+    controller.abort();
+  }, input.timeoutMs ?? DOWNLOAD_TIMEOUT_MS);
+
+  let response: Response;
+  try {
+    response = await fetch(endpoint, {
+      method: "GET",
+      headers: {
+        "User-Agent": USER_AGENT,
+        ...(input.token
+          ? {
+              Authorization: `Bearer ${input.token}`,
+            }
+          : {}),
+      },
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new CliError(`Request timed out: ${endpoint}`, {
+        exitCode: EXIT_CODES.NETWORK_OR_API,
+        cause: error,
+      });
+    }
+
+    throw new CliError(`Network request failed: ${endpoint}`, {
+      exitCode: EXIT_CODES.NETWORK_OR_API,
+      cause: error,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+
+  if (!response.ok) {
+    const payload = await parseJsonSafe(response);
+    const parsedError = ApiErrorEnvelopeSchema.safeParse(payload);
+    const retryAfterSeconds = parseRetryAfterSeconds(response.headers.get("Retry-After"));
+
+    throw new ApiHttpError(
+      parsedError.success
+        ? parsedError.data.error.message
+        : `API request failed with status ${response.status}.`,
+      {
+        status: response.status,
+        code: parsedError.success ? parsedError.data.error.code : undefined,
+        retryAfterSeconds,
+        endpoint,
+      },
+    );
+  }
+
+  const buffer = await response.arrayBuffer();
+
+  return {
+    zipBytes: new Uint8Array(buffer),
+    fileName: parseContentDispositionFilename(response.headers.get("Content-Disposition")),
+    contentType: response.headers.get("Content-Type"),
+    contentLength: (() => {
+      const raw = response.headers.get("Content-Length");
+      if (!raw) {
+        return null;
+      }
+
+      const parsed = Number.parseInt(raw, 10);
+      return Number.isFinite(parsed) ? parsed : null;
+    })(),
+  };
+}
+
+export async function downloadTemplateArchive(input: {
+  baseUrl: string;
+  slug: string;
+  token?: string;
+}): Promise<TemplateArchiveDownloadResponse> {
+  try {
+    return await executeTemplateArchiveDownload(input);
+  } catch (error) {
+    if (error instanceof ApiHttpError) {
+      throw error;
+    }
+
+    if (error instanceof CliError) {
+      if (!isRetriableCliError(error)) {
+        throw error;
+      }
+
+      return executeTemplateArchiveDownload(input);
     }
 
     throw error;
@@ -257,5 +400,17 @@ export async function finalizeTemplatePublish(input: {
       },
     },
     schema: PublishFinalizeResponseSchema,
+  });
+}
+
+export async function fetchTemplateDetail(input: {
+  baseUrl: string;
+  slug: string;
+}): Promise<TemplateDetailResponse> {
+  return requestWithRetry({
+    baseUrl: input.baseUrl,
+    path: `/api/templates/${encodeURIComponent(input.slug)}`,
+    method: "GET",
+    schema: TemplateDetailResponseSchema,
   });
 }

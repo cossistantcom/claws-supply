@@ -50,8 +50,45 @@ export const PublishFinalizeResponseSchema = z.object({
   templateUrl: z.string().url(),
 });
 
+const TemplateDetailSellerSchema = z
+  .object({
+    username: z.string().min(1),
+    displayName: z.string().nullable(),
+    avatarUrl: z.string().nullable(),
+    isVerified: z.boolean(),
+  })
+  .passthrough();
+
+const TemplateDetailStatsSchema = z
+  .object({
+    downloadCount: z.number().int().nonnegative(),
+    rating: z.number(),
+    reviewCount: z.number().int().nonnegative(),
+  })
+  .passthrough();
+
+const TemplateDetailTemplateSchema = z
+  .object({
+    id: z.string().min(1),
+    slug: z.string().min(1),
+    title: z.string().min(1),
+    priceCents: z.number().int().nonnegative(),
+    currency: z.string().min(1),
+    version: z.number().int().nullable(),
+    versionNotes: z.string().nullable(),
+  })
+  .passthrough();
+
+export const TemplateDetailResponseSchema = z.object({
+  template: TemplateDetailTemplateSchema,
+  seller: TemplateDetailSellerSchema,
+  stats: TemplateDetailStatsSchema,
+  relatedTemplates: z.array(z.unknown()),
+});
+
 export type DeviceCodeResponse = z.infer<typeof DeviceCodeResponseSchema>;
 export type DeviceTokenResponse = z.infer<typeof DeviceTokenResponseSchema>;
 export type SlugAvailabilityResponse = z.infer<typeof SlugAvailabilityResponseSchema>;
 export type ZipUploadTokenResponse = z.infer<typeof ZipUploadTokenResponseSchema>;
 export type PublishFinalizeResponse = z.infer<typeof PublishFinalizeResponseSchema>;
+export type TemplateDetailResponse = z.infer<typeof TemplateDetailResponseSchema>;

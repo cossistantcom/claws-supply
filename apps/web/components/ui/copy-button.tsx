@@ -53,7 +53,7 @@ export function CopyButton({
       onClick={handleCopy}
       aria-label={ariaLabel}
       className={cn(
-        "shrink-0 border border-border bg-background/80 hover:bg-muted",
+        "shrink-0 border border-border hover:bg-muted",
         copied ? "text-cossistant-green" : "text-muted-foreground",
         className,
       )}
