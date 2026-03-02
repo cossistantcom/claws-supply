@@ -102,11 +102,10 @@ function HomepageTemplateSection({
   return (
     <article className="space-y-4">
       <header className="space-y-2">
-        <p className="text-[11px] tracking-wider text-muted-foreground uppercase">
-          Discovery
-        </p>
         <div className="flex items-center justify-between gap-4">
-          <h2 className="text-lg sm:text-xl font-semibold leading-tight">{title}</h2>
+          <h2 className="text-lg sm:text-xl font-semibold leading-tight">
+            {title}
+          </h2>
           <Link href={viewAllHref} className="text-xs hover:underline shrink-0">
             {viewAllLabel}
           </Link>
