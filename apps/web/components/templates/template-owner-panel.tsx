@@ -234,8 +234,8 @@ export function TemplateOwnerPanel({
             </p>
             <p>
               Uploading new template zip versions is now CLI-only. Use{" "}
-              <code>npx claws-supply build</code> and{" "}
-              <code>npx claws-supply publish</code> from your local project.
+              <code>npx claws-supply@latest build</code> and{" "}
+              <code>npx claws-supply@latest publish</code> from your local project.
             </p>
           </div>
 

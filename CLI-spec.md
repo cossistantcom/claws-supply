@@ -10,9 +10,9 @@
 
 **Does:**
 
-- `npx claws-supply auth` — device authorization with browser approval and local token storage
-- `npx claws-supply build` — build and sign a local template artifact (`manifest.json` + hashes)
-- `npx claws-supply publish` — create a draft template for the authenticated user via `/api/cli/v1`
+- `npx claws-supply@latest auth` — device authorization with browser approval and local token storage
+- `npx claws-supply@latest build` — build and sign a local template artifact (`manifest.json` + hashes)
+- `npx claws-supply@latest publish` — create a draft template for the authenticated user via `/api/cli/v1`
 
 **Doesn't (not in MVP):**
 
@@ -156,8 +156,8 @@ claws-supply/
 │   ├── index.ts              # Entry: shebang + bootstrap
 │   ├── cli.ts                # Commander program definition
 │   ├── commands/
-│   │   ├── install.ts        # npx claws-supply <slug> (or interactive)
-│   │   └── info.ts           # npx claws-supply info <slug>
+│   │   ├── install.ts        # npx claws-supply@latest <slug> (or interactive)
+│   │   └── info.ts           # npx claws-supply@latest info <slug>
 │   ├── lib/
 │   │   ├── api.ts            # Fetch from claws.supply API
 │   │   ├── download.ts       # Download zip + verify archive hash
@@ -188,7 +188,7 @@ That's it. No config patching, no permission engine, no security scanner. Those 
 ### 5.1 Auth
 
 ```bash
-npx claws-supply auth
+npx claws-supply@latest auth
 ```
 
 - Starts device authorization via `/api/cli/v1/auth/device/code`
@@ -199,7 +199,7 @@ npx claws-supply auth
 ### 5.2 Build
 
 ```bash
-npx claws-supply build
+npx claws-supply@latest build
 ```
 
 - Prompts for title + slug
@@ -210,7 +210,7 @@ npx claws-supply build
 ### 5.3 Publish
 
 ```bash
-npx claws-supply publish
+npx claws-supply@latest publish
 ```
 
 - Requests zip upload token from `/api/cli/v1/templates/uploads/zip-token`
@@ -718,7 +718,7 @@ Always:
   The download may be corrupted. Try again, or download from claws.supply directly.
 
 ✗ Template "nonexistent-slug" not found
-  Check the slug at https://claws.supply or run `npx claws-supply` to browse.
+  Check the slug at https://claws.supply or run `npx claws-supply@latest` to browse.
 
 ✗ This is a paid template ($12.00)
   Purchase it at: https://claws.supply/openclaw/template/reddit-marketing-starter

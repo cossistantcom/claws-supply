@@ -25,21 +25,21 @@ export default function PublishViaCliPage() {
         <section className="space-y-3">
           <h2 className="text-lg">1. Authenticate</h2>
           <pre className="border border-border p-3 text-sm overflow-x-auto">
-            {`npx claws-supply auth`}
+            {`npx claws-supply@latest auth`}
           </pre>
         </section>
 
         <section className="space-y-3">
           <h2 className="text-lg">2. Build + sign template</h2>
           <pre className="border border-border p-3 text-sm overflow-x-auto">
-            {`npx claws-supply build`}
+            {`npx claws-supply@latest build`}
           </pre>
         </section>
 
         <section className="space-y-3">
           <h2 className="text-lg">3. Publish draft</h2>
           <pre className="border border-border p-3 text-sm overflow-x-auto">
-            {`npx claws-supply publish`}
+            {`npx claws-supply@latest publish`}
           </pre>
           <p className="text-sm text-muted-foreground">
             The CLI prints the direct edit URL after draft creation. Only you

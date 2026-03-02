@@ -36,8 +36,8 @@ Testing this CLI from another folder:
     npm pack
     cd /path/to/another/project
     npm install -D /absolute/path/to/hourglass/packages/cli/claws-supply-0.1.0.tgz
-    npx claws-supply build -D
-    npx claws-supply publish -D
+    npx claws-supply@latest build -D
+    npx claws-supply@latest publish -D
 
   Option C (global linked command):
     cd /absolute/path/to/hourglass/packages/cli

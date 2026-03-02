@@ -132,7 +132,7 @@ export default async function TemplateDetailPage({ params }: TemplatePageProps) 
     templateUrl,
     categoryLabel: category?.label ?? null,
   });
-  const command = `npx claws-supply use ${detail.template.slug}`;
+  const command = `npx claws-supply@latest use ${detail.template.slug}`;
   const isPaidTemplate = detail.template.priceCents > 0;
   const paidTemplateAccess =
     isPaidTemplate && session

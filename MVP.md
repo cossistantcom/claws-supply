@@ -53,11 +53,21 @@
   - Browsing sales: 30% platform commission
   - Direct-link sales: 20% platform commission
   - Direct referral window: 90 days
+- [x] DONE — Template purchase flow shipped (code path):
+  - `POST /api/purchases/checkout` creates authenticated checkout sessions for paid templates
+  - Commission split is persisted on `purchase` (`commission_rate`, `platform_fee_amount_cents`, `seller_payout_amount_cents`)
+  - Stripe Checkout for paid templates is created in seller connected-account context with `application_fee_amount`
+  - Connect webhook shipped at `POST /api/stripe/webhooks/connect` to transition purchases to `completed` / `failed`
+  - Template detail quick-command gate shipped on `/openclaw/template/[templateSlug]`:
+    - free template: copy command
+    - paid + signed out: sign-in CTA
+    - paid + signed in without purchase: purchase CTA
+    - paid + owner/admin/purchased: copy command
 - [x] DONE — Advertising subscriptions v1 shipped:
   - Public sales + authenticated campaign management page at `/advertise`
   - Ad campaign schema + migration (`ad_campaign`, `stripe_webhook_event`, enums/indexes/constraints)
   - Ads APIs shipped: `GET /api/ads/availability`, `GET/POST /api/ads/campaign`, `POST /api/ads/campaign/cancel`, `POST /api/ads/logo-handle`
-  - Stripe ads webhook lifecycle sync shipped at `POST /api/stripe/webhooks`
+  - Stripe ads webhook lifecycle sync shipped at `POST /api/stripe/webhooks/platform`
   - Sponsored rendering shipped for sidebar and in-grid results cards
   - Legal updates shipped for advertising subscriptions/moderation in terms + policy pages
 - [x] DONE — Members community surfaces shipped:
@@ -101,7 +111,7 @@
 - Member privacy decision: public member read paths only select safe fields (`id`, `username`, `name`, `bio`, `image`, verification flags, timestamps); email is never exposed.
 - Migration prerequisite: local/dev must run latest Drizzle migrations before app runtime (`bun run migrate`) so lifecycle columns like `template.status` exist.
 - Current gap snapshot:
-  - Checkout/purchase routes + Stripe webhook purchase creation are still pending.
+  - Purchase checkout + connect-webhook completion are shipped; `GET /api/purchases` and `GET /api/purchases/[templateSlug]` are still pending.
   - Review routes are still pending.
   - Dedicated `/api/members` and `/api/members/[username]` endpoints are still pending (public pages currently read server-side directly).
   - Automated tests for lifecycle/read/blob/payment flows are still pending.
@@ -388,19 +398,27 @@ No shareable pre-signed blob download URL is returned to client.
 ### 6.2 Purchase Flow
 
 ```
-1. Buyer clicks "Buy" on template page
-2. Determine sale_type:
-   - If URL has ?ref={sellerUsername} → sale_type = "direct"
+1. Buyer clicks purchase CTA on template detail page.
+2. Client calls POST /api/purchases/checkout with body { templateSlug, ref? }.
+3. Route enforces authenticated session + Zod input validation.
+4. Service validates template availability + prevents self-purchase + checks existing ownership.
+5. Determine sale_type:
+   - If request body has ref matching seller username → sale_type = "direct"
    - Otherwise → sale_type = "browsing"
-3. Look up commission rate:
+6. Look up commission rate:
    a. Check commission_overrides for this seller
    b. If no override → use defaults (direct: 20%, browsing: 30%)
-4. Create Stripe Checkout Session:
-   - application_fee_amount = price * (commission_rate / 100)
-   - transfer_data.destination = seller's stripe_account_id
-5. On successful payment (webhook: checkout.session.completed):
-   a. Create purchase record
-6. Buyer can now download the template
+7. Upsert pending purchase row with:
+   - price, commission_rate, platform_fee_amount_cents, seller_payout_amount_cents
+8. Create Stripe Checkout Session for the seller connected account:
+   - request option: stripeAccount = seller.stripe_account_id
+   - payment_intent_data.application_fee_amount = platform fee
+9. Persist stripe_checkout_session_id + checkout_started purchase event.
+10. On successful payment webhook (`checkout.session.completed` / `checkout.session.async_payment_succeeded`):
+    a. Update purchase status to completed
+    b. Set completed_at + stripe_payment_intent_id
+    c. Persist checkout_completed purchase event
+11. Buyer can now download/use the paid template.
 ```
 
 `download_count` is incremented on successful download stream start (`GET /api/templates/[slug]/download`), not on checkout completion.
@@ -502,11 +520,11 @@ Deprecated/removed routes:
 
 ### 7.3 Purchase Routes
 
-| Method | Route                           | Auth | Description                                                            |
-| ------ | ------------------------------- | ---- | ---------------------------------------------------------------------- |
-| `POST` | `/api/purchases/checkout`       | ✅   | Create Stripe Checkout session. Body: `{ templateSlug, ref? }`         |
-| `GET`  | `/api/purchases`                | ✅   | List current user's purchases. Includes template info for re-download. |
-| `GET`  | `/api/purchases/[templateSlug]` | ✅   | Check if current user owns a specific template                         |
+| Method | Route                           | Auth | Status      | Description                                                            |
+| ------ | ------------------------------- | ---- | ----------- | ---------------------------------------------------------------------- |
+| `POST` | `/api/purchases/checkout`       | ✅   | ✅ Shipped  | Create Stripe Checkout session. Body: `{ templateSlug, ref? }`         |
+| `GET`  | `/api/purchases`                | ✅   | ⚠️ Pending  | List current user's purchases. Includes template info for re-download. |
+| `GET`  | `/api/purchases/[templateSlug]` | ✅   | ⚠️ Pending  | Check if current user owns a specific template                         |
 
 ### 7.4 Review Routes
 
@@ -527,11 +545,14 @@ Deprecated/removed routes:
 
 ### 7.6 Stripe Routes
 
-| Method | Route                        | Auth | Description                                                       |
-| ------ | ---------------------------- | ---- | ----------------------------------------------------------------- |
-| `POST` | `/api/stripe/connect`        | ✅   | Create Stripe Connect account + return onboarding URL             |
-| `GET`  | `/api/stripe/connect/status` | ✅   | Check Stripe account status (onboarding complete, verified, etc.) |
-| `POST` | `/api/stripe/webhooks`       | ❌\* | Stripe webhook handler. \*Verified via Stripe signature.          |
+| Method | Route                           | Auth | Status      | Description                                                                                  |
+| ------ | ------------------------------- | ---- | ----------- | -------------------------------------------------------------------------------------------- |
+| `POST` | `/api/profile/stripe/connect`   | ✅   | ✅ Shipped  | Create Stripe Connect account link and return onboarding URL.                               |
+| `GET`  | `/api/profile/stripe/status`    | ✅   | ✅ Shipped  | Check Stripe account status (onboarding complete, verified, etc.).                          |
+| `POST` | `/api/stripe/webhooks/connect`  | ❌\* | ✅ Shipped  | Stripe Connect webhook for template purchases + connected account updates.                   |
+| `POST` | `/api/stripe/webhooks/platform` | ❌\* | ✅ Shipped  | Stripe platform webhook for advertising subscriptions.                                       |
+
+\* Verified via Stripe signature.
 
 ### 7.7 Admin Routes
 
@@ -621,7 +642,12 @@ app/
 - **SEO title:** "{Template Title} — OpenClaw Template on Claws.supply"
 - **Content:**
   - Template title, description (rendered markdown), cover image
-  - Price (or "Free"), Buy/Download button
+  - Price + quick command row: `npx claws-supply use {templateSlug}`
+  - Quick command access states:
+    - Free template: copy command visible for all visitors
+    - Paid + signed out: locked command row + sign-in CTA
+    - Paid + signed in without completed purchase: purchase CTA (`Purchase for $X`)
+    - Paid + owner/admin/paid buyer: copy command visible
   - Seller info card (avatar, name, verified badge, link to profile)
   - Stats: downloads, average rating, review count
   - Reviews section (paginated)
@@ -668,9 +694,9 @@ app/
 #### CLI Publishing Guide (`/openclaw/templates/publish-via-cli`)
 
 - Public guide page for sellers with exact CLI commands:
-  - `npx claws-supply auth`
-  - `npx claws-supply build`
-  - `npx claws-supply publish`
+  - `npx claws-supply@latest auth`
+  - `npx claws-supply@latest build`
+  - `npx claws-supply@latest publish`
 - This replaces the previous web create-template form flow.
 
 #### Dashboard — Settings (`/dashboard/settings`)
@@ -739,7 +765,20 @@ For MVP, admin features are **API-only** (no admin UI). Admins use API calls or 
 
 ## 11. Webhook Handlers
 
-### Stripe Webhooks (`POST /api/stripe/webhooks`)
+### Stripe Connect Webhooks (`POST /api/stripe/webhooks/connect`)
+
+| Event                                    | Action                                                                                          |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `checkout.session.completed`             | Complete template purchase when payment status is `paid`.                                      |
+| `checkout.session.async_payment_succeeded` | Complete template purchase for delayed-success payment methods.                                |
+| `checkout.session.expired`               | Mark pending template purchase as failed/expired.                                               |
+| `checkout.session.async_payment_failed`  | Mark pending template purchase as failed.                                                       |
+| `account.updated`                        | Sync seller `stripeVerified` status from Connect account capability flags.                      |
+
+Webhook signatures are verified via `stripe.webhooks.constructEvent()` with `STRIPE_CONNECT_WEBHOOK_SECRET`.
+Connect webhook event IDs are persisted in `stripe_connect_webhook_event` for idempotency.
+
+### Stripe Platform Webhooks (`POST /api/stripe/webhooks/platform`)
 
 | Event                           | Action                                                                                       |
 | ------------------------------- | -------------------------------------------------------------------------------------------- |
@@ -749,8 +788,8 @@ For MVP, admin features are **API-only** (no admin UI). Admins use API calls or 
 | `customer.subscription.deleted` | End campaign and stop visibility.                                                            |
 | `invoice.payment_failed`        | Record failure state for observability; do not hide ad immediately.                          |
 
-All webhooks are verified via `stripe.webhooks.constructEvent()` with signing secret.
-Webhook event IDs are persisted for idempotency in `stripe_webhook_event`.
+Webhook signatures are verified via `stripe.webhooks.constructEvent()` with `STRIPE_PLATFORM_WEBHOOK_SECRET`.
+Platform webhook event IDs are persisted for idempotency in `stripe_webhook_event`.
 
 ---
 
@@ -771,6 +810,7 @@ Webhook event IDs are persisted for idempotency in `stripe_webhook_event`.
 13. **Versioning:** each version is immutable and unique per template; new version must increment by exactly `+1` (integer versioning).
 14. **Download tracking:** `download_count` increments only after private blob fetch begins successfully.
 15. **Soft delete:** deletion sets lifecycle status to `deleted`; data is retained.
+16. **Paid command gate:** on template detail pages, paid-template command copy is allowed only for owner/admin/completed-purchase users; ineligible users see sign-in or purchase CTA.
 
 ### Known Hardening Gaps (Non-Blocking Follow-up)
 

@@ -5,7 +5,11 @@ import { LobsterClawIcon } from "@/components/lobster-claw";
 import { OpenClawPageShell } from "@/components/openclaw-page-shell";
 import { TemplateFeedGrid } from "@/components/template-feed-grid";
 import { discoveryPath } from "@/lib/routes";
-import { buildSeoMetadata, getDefaultOgImagePath } from "@/lib/seo";
+import {
+  buildSeoMetadata,
+  DEFAULT_SITE_TAGLINE,
+  getDefaultOgImagePath,
+} from "@/lib/seo";
 import { buildHomepageJsonLd, serializeJsonLd } from "@/lib/seo/jsonld";
 import { listPublishedTemplatesCached } from "@/lib/templates/read-service";
 import type {
@@ -17,7 +21,7 @@ import Link from "next/link";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = buildSeoMetadata({
-  title: "Claws.supply — OpenClaw AI Agent Templates Marketplace",
+  title: DEFAULT_SITE_TAGLINE,
   description:
     "Discover popular and latest OpenClaw agent templates, and launch faster with production-ready setups.",
   path: "/",
@@ -143,7 +147,7 @@ export default async function Page() {
           <div className="flex-1 flex flex-col gap-4">
             <LobsterClawIcon className="size-20" />
             <h1 className="text-3xl sm:text-3xl md:text-4xl xl:text-5xl leading-[1.3] tracking-tight text-balance">
-              Explore and share vetted OpenClaw templates.
+              {DEFAULT_SITE_TAGLINE}
             </h1>
 
             <p className="text-sm sm:text-base text-muted-foreground max-w-xl leading-relaxed">

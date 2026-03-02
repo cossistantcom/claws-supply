@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 
 const DEFAULT_SITE_URL = "https://claws.supply";
-const DEFAULT_OG_IMAGE_PATH = "/og-main.png";
+const DEFAULT_OG_IMAGE_PATH = "/api/og";
 const SITE_NAME = "Claws.supply";
+export const DEFAULT_SITE_TAGLINE = "Explore and share vetted OpenClaw templates.";
 
 function normalizeSiteUrl(url: string) {
   return url.endsWith("/") ? url.slice(0, -1) : url;

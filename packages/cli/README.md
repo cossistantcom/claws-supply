@@ -9,10 +9,10 @@ CLI for creating, packaging, and publishing template artifacts to claws.supply.
 Run directly with `npx`:
 
 ```bash
-npx claws-supply --help
-npx claws-supply auth
-npx claws-supply build
-npx claws-supply publish
+npx claws-supply@latest --help
+npx claws-supply@latest auth
+npx claws-supply@latest build
+npx claws-supply@latest publish
 ```
 
 Commands:
@@ -27,13 +27,13 @@ Commands:
 `build` targets your current folder by default:
 
 ```bash
-npx claws-supply build
+npx claws-supply@latest build
 ```
 
 Use `--source <path>` only when the target project is elsewhere:
 
 ```bash
-npx claws-supply build --source /path/to/target
+npx claws-supply@latest build --source /path/to/target
 ```
 
 `--source .` is optional and equivalent to the default current folder behavior.
@@ -46,9 +46,9 @@ npx claws-supply build --source /path/to/target
 Examples:
 
 ```bash
-npx claws-supply auth -D
-npx claws-supply build -D
-npx claws-supply publish -D
+npx claws-supply@latest auth -D
+npx claws-supply@latest build -D
+npx claws-supply@latest publish -D
 ```
 
 ## Local Development (this repo)
@@ -88,8 +88,8 @@ bun run build
 npm pack
 cd /path/to/another/project
 npm install -D /Users/anthonyriera/code/hourglass/packages/cli/claws-supply-0.1.0.tgz
-npx claws-supply build -D
-npx claws-supply publish -D
+npx claws-supply@latest build -D
+npx claws-supply@latest publish -D
 ```
 
 Option C: global link for fast iteration.

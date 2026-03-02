@@ -6,7 +6,12 @@ import { Navbar } from "@/components/navbar";
 import { SiteFooter } from "@/components/site-footer";
 import { Toaster } from "@/components/ui/sonner";
 import { getSessionFromNextHeaders } from "@/lib/auth/session";
-import { absoluteUrl, getDefaultOgImagePath, getSiteUrl } from "@/lib/seo";
+import {
+  absoluteUrl,
+  DEFAULT_SITE_TAGLINE,
+  getDefaultOgImagePath,
+  getSiteUrl,
+} from "@/lib/seo";
 import "./globals.css";
 import { MainProviders } from "./providers";
 import Script from "next/script";
@@ -17,7 +22,7 @@ const DEFAULT_OG_IMAGE_URL = absoluteUrl(getDefaultOgImagePath());
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Claws.supply — OpenClaw AI Agent Templates Marketplace",
+    default: DEFAULT_SITE_TAGLINE,
     template: "%s",
   },
   description:
@@ -26,7 +31,7 @@ export const metadata: Metadata = {
     canonical: "/",
   },
   openGraph: {
-    title: "Claws.supply — OpenClaw AI Agent Templates Marketplace",
+    title: DEFAULT_SITE_TAGLINE,
     description:
       "Discover popular and latest OpenClaw agent templates, and launch faster with production-ready setups.",
     url: "/",
@@ -43,7 +48,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Claws.supply — OpenClaw AI Agent Templates Marketplace",
+    title: DEFAULT_SITE_TAGLINE,
     description:
       "Discover popular and latest OpenClaw agent templates, and launch faster with production-ready setups.",
     images: [DEFAULT_OG_IMAGE_URL],
