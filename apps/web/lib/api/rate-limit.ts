@@ -49,6 +49,21 @@ const RATE_LIMIT_POLICIES = {
     window: "1 m",
     limit: 15,
   },
+  templateCommentsReadByIp: {
+    prefix: "template-comments-read-ip",
+    window: "1 m",
+    limit: 180,
+  },
+  templateCommentsWriteByUser: {
+    prefix: "template-comments-write-user",
+    window: "1 m",
+    limit: 30,
+  },
+  templateCommentsDeleteByUser: {
+    prefix: "template-comments-delete-user",
+    window: "1 m",
+    limit: 30,
+  },
 } as const satisfies Record<string, RateLimitPolicy>;
 
 const limiterCache = new Map<string, Ratelimit>();
@@ -282,6 +297,41 @@ export async function enforceCliPublishRateLimit(
   userId: string,
 ): Promise<NextResponse | null> {
   const limiter = getRateLimiter(RATE_LIMIT_POLICIES.cliPublishByUser);
+  if (!limiter) {
+    return null;
+  }
+
+  return enforceRateLimit(request, limiter, userId);
+}
+
+export async function enforceTemplateCommentsReadRateLimit(
+  request: Request,
+): Promise<NextResponse | null> {
+  const limiter = getRateLimiter(RATE_LIMIT_POLICIES.templateCommentsReadByIp);
+  if (!limiter) {
+    return null;
+  }
+
+  return enforceRateLimit(request, limiter, resolveClientIp(request));
+}
+
+export async function enforceTemplateCommentsWriteRateLimit(
+  request: Request,
+  userId: string,
+): Promise<NextResponse | null> {
+  const limiter = getRateLimiter(RATE_LIMIT_POLICIES.templateCommentsWriteByUser);
+  if (!limiter) {
+    return null;
+  }
+
+  return enforceRateLimit(request, limiter, userId);
+}
+
+export async function enforceTemplateCommentsDeleteRateLimit(
+  request: Request,
+  userId: string,
+): Promise<NextResponse | null> {
+  const limiter = getRateLimiter(RATE_LIMIT_POLICIES.templateCommentsDeleteByUser);
   if (!limiter) {
     return null;
   }

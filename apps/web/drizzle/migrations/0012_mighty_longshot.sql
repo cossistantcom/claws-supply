@@ -1,1 +1,0 @@
-ALTER TABLE "template" DROP COLUMN "short_description";

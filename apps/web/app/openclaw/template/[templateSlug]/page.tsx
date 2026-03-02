@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ExtraSidebar } from "@/components/extra-sidebar";
 import { OpenClawPageShell } from "@/components/openclaw-page-shell";
 import { TemplateCard } from "@/components/template-card";
+import { TemplateCommentsSection } from "@/components/templates/template-comments-section";
 import { isAdmin } from "@/lib/auth/permissions";
 import { getSessionFromNextHeaders } from "@/lib/auth/session";
 import { getCategoryBySlug } from "@/lib/categories";
@@ -211,6 +212,10 @@ export default async function TemplateDetailPage({ params }: TemplatePageProps) 
             ))}
           </div>
         </section>
+      ) : null}
+
+      {templateRow.status === "published" ? (
+        <TemplateCommentsSection templateSlug={detail.template.slug} />
       ) : null}
     </OpenClawPageShell>
   );

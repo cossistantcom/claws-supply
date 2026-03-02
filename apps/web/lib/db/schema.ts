@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import {
   boolean,
   check,
+  foreignKey,
   index,
   integer,
   pgEnum,
@@ -9,6 +10,7 @@ import {
   primaryKey,
   text,
   timestamp,
+  unique,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 
@@ -374,6 +376,53 @@ export const review = pgTable(
     titleLengthCheck: check(
       "review_title_length_check",
       sql`${table.title} IS NULL OR char_length(${table.title}) <= 200`,
+    ),
+  }),
+);
+
+export const templateComment = pgTable(
+  "template_comment",
+  {
+    id: text("id").primaryKey(),
+    templateId: text("template_id")
+      .notNull()
+      .references(() => template.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    parentCommentId: text("parent_comment_id"),
+    depth: integer("depth").notNull().default(0),
+    body: text("body").notNull(),
+    deletedAt: timestamp("deleted_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    parentCommentFk: foreignKey({
+      columns: [table.parentCommentId, table.templateId],
+      foreignColumns: [table.id, table.templateId],
+      name: "template_comment_parent_comment_id_template_id_fk",
+    }).onDelete("cascade"),
+    idTemplateUnique: unique("template_comment_id_template_id_unique").on(
+      table.id,
+      table.templateId,
+    ),
+    templateParentCreatedIdx: index("template_comment_template_parent_created_idx").on(
+      table.templateId,
+      table.parentCommentId,
+      table.createdAt,
+      table.id,
+    ),
+    templateCreatedIdx: index("template_comment_template_created_idx").on(
+      table.templateId,
+      table.createdAt,
+      table.id,
+    ),
+    parentIdx: index("template_comment_parent_comment_id_idx").on(table.parentCommentId),
+    userIdx: index("template_comment_user_id_idx").on(table.userId),
+    depthCheck: check(
+      "template_comment_depth_check",
+      sql`${table.depth} >= 0 AND ${table.depth} <= 2`,
     ),
   }),
 );
