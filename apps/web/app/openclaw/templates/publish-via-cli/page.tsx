@@ -17,31 +17,33 @@ export default function PublishViaCliPage() {
         <header className="space-y-2 border-b border-border pb-4">
           <h1 className="text-3xl">Publish Templates via CLI</h1>
           <p className="text-sm text-muted-foreground">
-            Template creation is now CLI-first. Run these commands from your local project.
+            Template creation is now CLI-first. Run these commands from your
+            local project.
           </p>
         </header>
 
         <section className="space-y-3">
           <h2 className="text-lg">1. Authenticate</h2>
           <pre className="border border-border p-3 text-sm overflow-x-auto">
-{`npx claws-supply auth`}
+            {`npx claws-supply auth`}
           </pre>
         </section>
 
         <section className="space-y-3">
           <h2 className="text-lg">2. Build + sign template</h2>
           <pre className="border border-border p-3 text-sm overflow-x-auto">
-{`npx claws-supply build`}
+            {`npx claws-supply build`}
           </pre>
         </section>
 
         <section className="space-y-3">
           <h2 className="text-lg">3. Publish draft</h2>
           <pre className="border border-border p-3 text-sm overflow-x-auto">
-{`npx claws-supply publish`}
+            {`npx claws-supply publish`}
           </pre>
           <p className="text-sm text-muted-foreground">
-            The CLI prints the direct edit URL after draft creation. Only you and admins can view it until it is published.
+            The CLI prints the direct edit URL after draft creation. Only you
+            and admins can view it until it is published.
           </p>
         </section>
 
