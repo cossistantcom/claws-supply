@@ -19,7 +19,6 @@ const X_CLIENT_SECRET =
   process.env.X_CLIENT_SECRET ??
   process.env.TWITTER_CLIENT_SECRET ??
   process.env.TWITER_CLIENT_SECRET;
-const X_OAUTH_SCOPES = ["users.read", "user.email"] as const;
 const DEFAULT_CLI_CLIENT_ID = "claws-supply-cli";
 
 function resolveAuthBaseURL(): string | undefined {
@@ -120,24 +119,6 @@ async function ensureUniqueUsername(candidate: string): Promise<string> {
   return `${USERNAME_FALLBACK}_${Date.now().toString().slice(-6)}`;
 }
 
-type TwitterProfile = {
-  data?: {
-    id?: unknown;
-    username?: unknown;
-    name?: unknown;
-    email?: unknown;
-    confirmed_email?: unknown;
-    profile_image_url?: unknown;
-  };
-};
-
-type XApiResponse = {
-  ok: boolean;
-  status: number;
-  statusText: string;
-  body: unknown;
-};
-
 function toNonEmptyString(value: unknown): string | null {
   if (typeof value !== "string") {
     return null;
@@ -147,33 +128,13 @@ function toNonEmptyString(value: unknown): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
-async function fetchXApi(
-  url: string,
-  accessToken: string,
-): Promise<XApiResponse> {
-  const response = await fetch(url, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
-
-  let body: unknown = null;
-  try {
-    body = await response.json();
-  } catch {
-    body = null;
-  }
-
-  return {
-    ok: response.ok,
-    status: response.status,
-    statusText: response.statusText,
-    body,
+function mapTwitterProfileToUser(profile: {
+  data?: {
+    id?: unknown;
+    username?: unknown;
+    name?: unknown;
   };
-}
-
-function mapTwitterProfileToUser(profile: TwitterProfile) {
+}) {
   const rawUsername = toNonEmptyString(profile.data?.username)?.toLowerCase();
   const displayName = toNonEmptyString(profile.data?.name);
   const profileId = toNonEmptyString(profile.data?.id);
@@ -225,123 +186,10 @@ function createAuth() {
       twitter: {
         clientId: X_CLIENT_ID!,
         clientSecret: X_CLIENT_SECRET!,
-        // disableDefaultScope: true,
-        scope: ["user.email"],
-        // getUserInfo: async (token) => {
-        //   const accessToken = toNonEmptyString(
-        //     (token as { accessToken?: unknown }).accessToken,
-        //   );
-
-        //   if (!accessToken) {
-        //     console.error("[auth][x] missing access token in getUserInfo", {
-        //       token,
-        //     });
-        //     return null;
-        //   }
-
-        //   let profileResponse: XApiResponse | null = null;
-        //   try {
-        //     profileResponse = await fetchXApi(
-        //       "https://api.x.com/2/users/me?user.fields=profile_image_url",
-        //       accessToken,
-        //     );
-        //   } catch (error) {
-        //     console.error("[auth][x] profile request failed", {
-        //       error: error instanceof Error ? error.message : "unknown_error",
-        //     });
-        //     return null;
-        //   }
-
-        //   console.log("[auth][x] profile response payload", profileResponse);
-
-        //   if (
-        //     !profileResponse.ok ||
-        //     !profileResponse.body ||
-        //     typeof profileResponse.body !== "object"
-        //   ) {
-        //     return null;
-        //   }
-
-        //   const profile = profileResponse.body as TwitterProfile;
-        //   const profileData =
-        //     profile.data && typeof profile.data === "object"
-        //       ? profile.data
-        //       : null;
-
-        //   if (!profileData) {
-        //     console.error("[auth][x] profile response missing data object", {
-        //       profile,
-        //     });
-        //     return null;
-        //   }
-
-        //   let emailVerified = false;
-        //   let emailResponse: XApiResponse | null = null;
-
-        //   try {
-        //     emailResponse = await fetchXApi(
-        //       "https://api.x.com/2/users/me?user.fields=confirmed_email",
-        //       accessToken,
-        //     );
-        //   } catch (error) {
-        //     console.error("[auth][x] confirmed email request failed", {
-        //       error: error instanceof Error ? error.message : "unknown_error",
-        //     });
-        //     emailResponse = null;
-        //   }
-
-        //   console.log(
-        //     "[auth][x] confirmed email response payload",
-        //     emailResponse,
-        //   );
-
-        //   if (
-        //     emailResponse?.ok &&
-        //     emailResponse.body &&
-        //     typeof emailResponse.body === "object"
-        //   ) {
-        //     const emailProfile = emailResponse.body as TwitterProfile;
-        //     const confirmedEmail = toNonEmptyString(
-        //       emailProfile.data?.confirmed_email,
-        //     );
-
-        //     if (confirmedEmail) {
-        //       profileData.email = confirmedEmail;
-        //       emailVerified = true;
-        //     }
-        //   }
-
-        //   const profileId = toNonEmptyString(profileData.id);
-        //   const profileUsername = toNonEmptyString(profileData.username);
-        //   const profileName = toNonEmptyString(profileData.name);
-        //   const profileEmail =
-        //     toNonEmptyString(profileData.email) ?? profileUsername ?? null;
-        //   const profileImage = toNonEmptyString(profileData.profile_image_url);
-
-        //   if (!profileId) {
-        //     console.error("[auth][x] profile response missing user id", {
-        //       profile,
-        //     });
-        //     return null;
-        //   }
-
-        //   const mappedUser = mapTwitterProfileToUser(profile);
-
-        //   return {
-        //     user: {
-        //       id: profileId,
-        //       name: profileName ?? profileUsername ?? profileId,
-        //       email: profileEmail,
-        //       image: profileImage ?? undefined,
-        //       emailVerified,
-        //       ...mappedUser,
-        //     },
-        //     data: profile,
-        //   };
-        // },
-        // mapProfileToUser: (profile) => {
-        //   return mapTwitterProfileToUser(profile);
-        // },
+        // Use Better Auth's built-in getUserInfo to reduce drift and maintenance.
+        mapProfileToUser: (profile) => {
+          return mapTwitterProfileToUser(profile);
+        },
       },
     },
     user: {

@@ -8,7 +8,7 @@ export function LandingCommandDemo() {
     >
       <CommandCopyRow
         label="TRY IT NOW"
-        command="npx claws-supply <template-slug>"
+        command="npx claws-supply use <template-slug>"
       />
       <CommandCopyRow
         label="CREATE YOUR TEMPLATE"
