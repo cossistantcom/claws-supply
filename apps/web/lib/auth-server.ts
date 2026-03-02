@@ -19,7 +19,7 @@ const X_CLIENT_SECRET =
   process.env.X_CLIENT_SECRET ??
   process.env.TWITTER_CLIENT_SECRET ??
   process.env.TWITER_CLIENT_SECRET;
-const X_OAUTH_SCOPES = ["users.read", "users.email"] as const;
+const X_OAUTH_SCOPES = ["users.read", "email"] as const;
 const DEFAULT_CLI_CLIENT_ID = "claws-supply-cli";
 
 function resolveAuthBaseURL(): string | undefined {
