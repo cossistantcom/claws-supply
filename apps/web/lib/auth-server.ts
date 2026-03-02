@@ -225,8 +225,8 @@ function createAuth() {
       twitter: {
         clientId: X_CLIENT_ID!,
         clientSecret: X_CLIENT_SECRET!,
-        disableDefaultScope: true,
-        scope: [...X_OAUTH_SCOPES],
+        // disableDefaultScope: true,
+        scope: ["user.email"],
         // getUserInfo: async (token) => {
         //   const accessToken = toNonEmptyString(
         //     (token as { accessToken?: unknown }).accessToken,
@@ -339,9 +339,9 @@ function createAuth() {
         //     data: profile,
         //   };
         // },
-        mapProfileToUser: (profile) => {
-          return mapTwitterProfileToUser(profile);
-        },
+        // mapProfileToUser: (profile) => {
+        //   return mapTwitterProfileToUser(profile);
+        // },
       },
     },
     user: {
