@@ -24,6 +24,7 @@ import type {
   CreateAdCampaignResponse,
 } from "./types";
 import { verifyAdLogoExistsAndMetadata } from "./blob";
+import { cookies } from "next/headers";
 
 type StripeUserRow = {
   id: string;
@@ -276,7 +277,10 @@ async function upsertPendingCampaign(options: {
   const now = new Date();
   const existingLiveCampaign = await findLiveCampaignByUserId(options.userId);
 
-  if (existingLiveCampaign && existingLiveCampaign.status !== "checkout_pending") {
+  if (
+    existingLiveCampaign &&
+    existingLiveCampaign.status !== "checkout_pending"
+  ) {
     throw new AdsServiceError(
       "You already have an active advertising campaign. Cancel it before creating a new one.",
       {
@@ -288,7 +292,8 @@ async function upsertPendingCampaign(options: {
 
   await assertCapacityAvailable({
     now,
-    hasExistingPendingCampaign: existingLiveCampaign?.status === "checkout_pending",
+    hasExistingPendingCampaign:
+      existingLiveCampaign?.status === "checkout_pending",
   });
 
   const values = {
@@ -374,7 +379,9 @@ function requireStripePlatformWebhookSecret() {
   return secret;
 }
 
-async function markWebhookEventProcessed(event: Stripe.Event): Promise<boolean> {
+async function markWebhookEventProcessed(
+  event: Stripe.Event,
+): Promise<boolean> {
   try {
     await db.insert(stripeWebhookEvent).values({
       eventId: event.id,
@@ -447,6 +454,7 @@ export async function createAdCampaignCheckout(options: {
   baseUrl: string;
 }): Promise<CreateAdCampaignResponse> {
   const now = new Date();
+  const cookieStore = await cookies();
   await cleanupExpiredCheckoutPendingCampaigns(now);
 
   const logo = await verifyAdLogoExistsAndMetadata({
@@ -491,6 +499,10 @@ export async function createAdCampaignCheckout(options: {
         adCampaignId: campaignId,
         userId: options.userId,
         placement: options.input.placement,
+        datafast_visitor_id:
+          cookieStore.get("datafast_visitor_id")?.value || null,
+        datafast_session_id:
+          cookieStore.get("datafast_session_id")?.value || null,
       },
     },
   });
@@ -506,10 +518,13 @@ export async function createAdCampaignCheckout(options: {
 
   const campaign = await getCampaignByUserId(options.userId);
   if (!campaign) {
-    throw new AdsServiceError("Unable to load campaign after checkout creation.", {
-      code: "CAMPAIGN_FETCH_FAILED",
-      status: 500,
-    });
+    throw new AdsServiceError(
+      "Unable to load campaign after checkout creation.",
+      {
+        code: "CAMPAIGN_FETCH_FAILED",
+        status: 500,
+      },
+    );
   }
 
   if (!checkoutSession.url) {
@@ -525,7 +540,9 @@ export async function createAdCampaignCheckout(options: {
   };
 }
 
-export async function cancelAdCampaignForUser(userId: string): Promise<CancelAdCampaignResponse> {
+export async function cancelAdCampaignForUser(
+  userId: string,
+): Promise<CancelAdCampaignResponse> {
   await cleanupExpiredCheckoutPendingCampaigns();
 
   const [campaignRow] = await db
@@ -558,9 +575,12 @@ export async function cancelAdCampaignForUser(userId: string): Promise<CancelAdC
   }
 
   const stripe = getStripeClient();
-  const subscription = await stripe.subscriptions.update(campaignRow.stripeSubscriptionId, {
-    cancel_at_period_end: true,
-  });
+  const subscription = await stripe.subscriptions.update(
+    campaignRow.stripeSubscriptionId,
+    {
+      cancel_at_period_end: true,
+    },
+  );
 
   const now = new Date();
   const nextStatus = resolveCampaignStatusFromSubscription({
@@ -595,7 +615,9 @@ export async function cancelAdCampaignForUser(userId: string): Promise<CancelAdC
   };
 }
 
-async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) {
+async function handleCheckoutSessionCompleted(
+  session: Stripe.Checkout.Session,
+) {
   const stripe = getStripeClient();
   const campaignIdFromMetadata =
     typeof session.metadata?.adCampaignId === "string"
@@ -716,7 +738,8 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
   await db
     .update(adCampaign)
     .set({
-      status: campaign.status === "suspended_policy" ? "suspended_policy" : "ended",
+      status:
+        campaign.status === "suspended_policy" ? "suspended_policy" : "ended",
       stripeSubscriptionStatus: subscription.status,
       cancelAtPeriodEnd: true,
       currentPeriodStart: period.currentPeriodStart,
@@ -779,10 +802,14 @@ export async function processPlatformStripeWebhookEvent(event: Stripe.Event) {
 
   switch (event.type) {
     case "checkout.session.completed":
-      await handleCheckoutSessionCompleted(event.data.object as Stripe.Checkout.Session);
+      await handleCheckoutSessionCompleted(
+        event.data.object as Stripe.Checkout.Session,
+      );
       return;
     case "checkout.session.expired":
-      await handleCheckoutSessionExpired(event.data.object as Stripe.Checkout.Session);
+      await handleCheckoutSessionExpired(
+        event.data.object as Stripe.Checkout.Session,
+      );
       return;
     case "customer.subscription.updated":
       await handleSubscriptionUpdated(event.data.object as Stripe.Subscription);
@@ -798,7 +825,9 @@ export async function processPlatformStripeWebhookEvent(event: Stripe.Event) {
   }
 }
 
-export async function getAdCampaignByUserIdOrThrow(userId: string): Promise<AdCampaignDTO> {
+export async function getAdCampaignByUserIdOrThrow(
+  userId: string,
+): Promise<AdCampaignDTO> {
   const campaign = await getCampaignByUserId(userId);
 
   if (!campaign) {

@@ -140,7 +140,9 @@ export const RESERVED_CATEGORY_SLUGS = DISCOVERY_PAGES.map(
   (page) => page.slug,
 ) as readonly string[];
 
-const categorySlugSet = new Set<string>(CATEGORIES.map((category) => category.slug));
+const categorySlugSet = new Set<string>(
+  CATEGORIES.map((category) => category.slug),
+);
 const discoverySlugSet = new Set<string>(
   DISCOVERY_PAGES.map((page) => page.slug),
 );

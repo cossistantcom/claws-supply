@@ -4,7 +4,12 @@ import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import type Stripe from "stripe";
 import { db } from "@/lib/db";
-import { commissionOverride, purchase, purchaseEvent, user } from "@/lib/db/schema";
+import {
+  commissionOverride,
+  purchase,
+  purchaseEvent,
+  user,
+} from "@/lib/db/schema";
 import { templatePath } from "@/lib/routes";
 import { getStripeClient } from "@/lib/stripe";
 import {
@@ -16,6 +21,7 @@ import { requireTemplateRecordBySlug } from "@/lib/templates/repository";
 import { PurchaseServiceError } from "./errors";
 import type { CreatePurchaseCheckoutInput } from "./schemas";
 import type { CreatePurchaseCheckoutResponse } from "./types";
+import { cookies } from "next/headers";
 
 type PurchaseStatus = "pending" | "completed" | "failed";
 type PurchaseEventType =
@@ -115,10 +121,7 @@ function getResourceId(value: unknown): string | null {
   return null;
 }
 
-function resolveSaleType(input: {
-  sellerUsername: string;
-  ref?: string;
-}): {
+function resolveSaleType(input: { sellerUsername: string; ref?: string }): {
   saleType: TemplateSaleType;
   referralCode: string | null;
 } {
@@ -163,7 +166,9 @@ async function findPurchaseByBuyerTemplate(
       stripeCheckoutSessionId: purchase.stripeCheckoutSessionId,
     })
     .from(purchase)
-    .where(and(eq(purchase.buyerId, buyerId), eq(purchase.templateId, templateId)))
+    .where(
+      and(eq(purchase.buyerId, buyerId), eq(purchase.templateId, templateId)),
+    )
     .limit(1);
 
   return record ?? null;
@@ -593,7 +598,10 @@ export async function createTemplatePurchaseCheckout(options: {
   input: CreatePurchaseCheckoutInput;
   baseUrl: string;
 }): Promise<CreatePurchaseCheckoutResponse> {
-  const templateRow = await requireTemplateRecordBySlug(options.input.templateSlug);
+  const templateRow = await requireTemplateRecordBySlug(
+    options.input.templateSlug,
+  );
+  const cookieStore = await cookies();
 
   if (
     templateRow.status !== "published" ||
@@ -655,7 +663,10 @@ export async function createTemplatePurchaseCheckout(options: {
     });
   }
 
-  const commissionRate = await resolveCommissionRate(templateRow.sellerId, sale.saleType);
+  const commissionRate = await resolveCommissionRate(
+    templateRow.sellerId,
+    sale.saleType,
+  );
   const split = calculateSplitFromRate(templateRow.priceCents, commissionRate);
   const pending = await upsertPendingPurchase({
     buyerId: options.buyerId,
@@ -683,43 +694,53 @@ export async function createTemplatePurchaseCheckout(options: {
 
   let session: Stripe.Checkout.Session;
   try {
-    session = await stripe.checkout.sessions.create({
-      mode: "payment",
-      customer_email: stripeUser.email,
-      line_items: [
-        {
-          quantity: 1,
-          price_data: {
-            currency: toStripeCurrencyCode(templateRow.currency),
-            unit_amount: templateRow.priceCents,
-            product_data: {
-              name: templateRow.title,
-              description: deriveTemplateExcerptFromMarkdown(templateRow.description, 180),
+    session = await stripe.checkout.sessions.create(
+      {
+        mode: "payment",
+        customer_email: stripeUser.email,
+        line_items: [
+          {
+            quantity: 1,
+            price_data: {
+              currency: toStripeCurrencyCode(templateRow.currency),
+              unit_amount: templateRow.priceCents,
+              product_data: {
+                name: templateRow.title,
+                description: deriveTemplateExcerptFromMarkdown(
+                  templateRow.description,
+                  180,
+                ),
+              },
             },
           },
-        },
-      ],
-      success_url: `${baseUrl}${templatePath(templateRow.slug)}?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${baseUrl}${templatePath(templateRow.slug)}?checkout=cancel`,
-      metadata: {
-        kind: "template_purchase",
-        purchaseId: pending.purchaseId,
-        buyerId: options.buyerId,
-        templateId: templateRow.id,
-      },
-      payment_intent_data: {
-        application_fee_amount: split.platformFeeCents,
+        ],
+        success_url: `${baseUrl}${templatePath(templateRow.slug)}?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${baseUrl}${templatePath(templateRow.slug)}?checkout=cancel`,
         metadata: {
           kind: "template_purchase",
           purchaseId: pending.purchaseId,
           buyerId: options.buyerId,
           templateId: templateRow.id,
         },
+        payment_intent_data: {
+          application_fee_amount: split.platformFeeCents,
+          metadata: {
+            kind: "template_purchase",
+            purchaseId: pending.purchaseId,
+            buyerId: options.buyerId,
+            templateId: templateRow.id,
+            datafast_visitor_id:
+              cookieStore.get("datafast_visitor_id")?.value || null,
+            datafast_session_id:
+              cookieStore.get("datafast_session_id")?.value || null,
+          },
+        },
+        client_reference_id: pending.purchaseId,
       },
-      client_reference_id: pending.purchaseId,
-    }, {
-      stripeAccount: sellerRow.stripeAccountId,
-    });
+      {
+        stripeAccount: sellerRow.stripeAccountId,
+      },
+    );
   } catch (error) {
     await db
       .update(purchase)
